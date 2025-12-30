@@ -41,8 +41,8 @@
       <input id="inputNumbers" type="text" placeholder="輸入數字，以空格分隔（例如：7 2 8 1 4 9）" />
       <button id="btnStart">Start Sorting</button>
       <button id="btnReset">Reset</button>
-      <div class="info">延遲: <span id="delayLabel">250</span>ms</div>
-      <input id="delayRange" type="range" min="20" max="800" value="250" style="width:160px;margin-left:8px"/>
+      <div class="info">延遲: <span id="delayLabel">500</span>ms</div>
+      <input id="delayRange" type="range" min="20" max="1200" value="500" style="width:220px;margin-left:8px"/>
     </div>
 
     <div class="visual-wrap">
@@ -51,7 +51,7 @@
     </div>
 
     <div class="visual-wrap" style="margin-top:12px;">
-      <canvas id="treeCanvas" width="900" height="260" style="width:100%;height:260px;background:rgba(255,255,255,0.01);border-radius:8px;border:1px solid rgba(255,255,255,0.02)"></canvas>
+      <canvas id="treeCanvas" width="900" height="520" style="width:100%;height:520px;background:rgba(255,255,255,0.01);border-radius:8px;border:1px solid rgba(255,255,255,0.02)"></canvas>
       <div class="small">樹形結構（Leonardo heaps）視覺化 — 節點代表陣列上的元素，線代表父/子關係。</div>
     </div>
 
@@ -72,6 +72,7 @@
 
     let arr = [];
     let original = [];
+    let visualValues = [];
     let delay = parseInt(delayRange.value,10);
 
     delayRange.addEventListener('input', ()=>{ delay = parseInt(delayRange.value,10); delayLabel.textContent = delay; });
@@ -79,10 +80,11 @@
     function renderBars() {
       barsEl.innerHTML = '';
       if (!arr.length) return;
-      const max = Math.max(...arr.map(v=>Math.abs(v)),1);
+      const values = (visualValues && visualValues.length === arr.length) ? visualValues : arr;
+      const max = Math.max(...values.map(v=>Math.abs(v)),1);
       const maxH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--max-height')) || 360;
       const scale = (maxH - 28) / max;
-      arr.forEach((val,i)=>{
+      values.forEach((val,i)=>{
         const bar = document.createElement('div');
         bar.className = 'bar';
         bar.dataset.index = i;
@@ -102,8 +104,6 @@
       const b = barsEl.querySelector(`.bar[data-index='${i}']`);
       if (!b) return;
       if (add) b.classList.add(cls); else b.classList.remove(cls);
-      // update tree visualization to reflect highlights
-      drawTreeStructure();
     }
 
     async function highlightCompare(i,j) {
@@ -114,33 +114,56 @@
 
     async function animateAssign(target, source) {
       // show movement: source -> target
+      const moveVal = (visualValues && visualValues.length === arr.length) ? visualValues[source] : arr[source];
       setBarClass(source,'move',true); setBarClass(target,'move',true);
       await sleep(delay/1.2);
-      // actually assign value
-      arr[target] = arr[source];
-      renderBars();
+      // Update underlying data but keep old visual values during animation
+      arr[target] = moveVal;
       await sleep(delay/1.2);
+      // ATOMIC UPDATE: Now update visual values and redraw everything at once
+      if (!visualValues || visualValues.length !== arr.length) visualValues = arr.slice();
+      visualValues[target] = moveVal;
       setBarClass(source,'move',false); setBarClass(target,'move',false);
+      renderBars();
     }
 
     async function placeValue(idx, value) {
       setBarClass(idx,'move',true);
       await sleep(delay/2);
       arr[idx] = value;
-      renderBars();
       await sleep(delay/2);
+      // ATOMIC UPDATE: Update visual value and redraw at the end
+      if (!visualValues || visualValues.length !== arr.length) visualValues = arr.slice();
+      visualValues[idx] = value;
       setBarClass(idx,'move',false);
+      renderBars();
     }
 
     function markAllDone() {
       const bs = barsEl.querySelectorAll('.bar');
       bs.forEach(b=>{ b.classList.remove('compare'); b.classList.remove('move'); b.classList.add('done'); });
-      drawTreeStructure();
+      renderBars();
     }
 
     // ---------- Tree Visualization (Canvas) ----------
     const treeCanvas = document.getElementById('treeCanvas');
     const treeCtx = treeCanvas.getContext('2d');
+
+    // animation state for smooth node movement
+    const LERP = 0.12; // interpolation factor (0-1), increase to speed up
+    const LEVEL_HEIGHT = 80; // fixed comfortable vertical spacing between levels
+    const SIDE_PADDING = 50; // horizontal padding to prevent node clipping at edges
+    let targetPositions = []; // {x,y} per index in logical coordinates
+    let visualPositions = []; // {x,y} per index for smooth animation
+    let parentGlobal = []; // immediate parent mapping returned from getForest (latest)
+    let persistentParent = []; // persistent parent mapping used for drawing until finish
+    let currentScale = 1; // scale factor applied to fit tall trees
+    let currentTopMargin = 0; // canvas pixel top margin for centering after scaling
+    let currentOffsetX = 0; // canvas pixel left offset used when centering scaled content
+    let animationStarted = false;
+    let isAlgorithmFinished = false; // when true, begin fade-to-linear
+    let finishProgress = 0; // 0..1 progress of finish animation
+    const FINISH_SPEED = 0.03; // per frame advancement of finish animation
 
     function resizeTreeCanvas(){
       const rect = treeCanvas.getBoundingClientRect();
@@ -148,7 +171,9 @@
       treeCanvas.width = rect.width * dpr;
       treeCanvas.height = rect.height * dpr;
       treeCtx.setTransform(dpr,0,0,dpr,0,0);
+      // update targets; animation loop will draw
       drawTreeStructure();
+      if (!animationStarted) { animationStarted = true; requestAnimationFrame(animationLoop); }
     }
     window.addEventListener('resize', resizeTreeCanvas);
     resizeTreeCanvas();
@@ -187,63 +212,221 @@
       return parent;
     }
 
+    // compute target positions (no immediate drawing) and store parent map
+    // compute target positions (no immediate drawing) and store/update persistent parent map
     function drawTreeStructure(){
       if (!arr.length) {
+        // clear targets and canvas
+        targetPositions = [];
+        parentGlobal = [];
+        persistentParent = [];
         treeCtx.clearRect(0,0,treeCanvas.width, treeCanvas.height);
         return;
       }
+
       const parent = getForest(globalState.head, globalState.p, globalState.pshift);
+      parentGlobal = parent;
 
       const rect = treeCanvas.getBoundingClientRect();
       const width = rect.width;
       const height = rect.height;
-      treeCtx.clearRect(0,0,rect.width,rect.height);
 
       const padX = 24;
       const padY = 20;
       const usableW = width - padX*2;
       const n = arr.length;
-      const xForIndex = (i) => n <= 1 ? width/2 : padX + (i / (n - 1)) * usableW;
 
-      // compute depth by following parent chain
+      // update persistentParent: only overwrite if parent info exists; keep previous until finish
+      if (!persistentParent || persistentParent.length !== n) persistentParent = new Array(n).fill(null);
+      for (let i=0;i<n;i++){
+        if (parent[i] != null) persistentParent[i] = parent[i];
+        else if (isAlgorithmFinished) persistentParent[i] = null; // when finished, we will transition to linear
+      }
+
+      // compute depth by following persistent parent chain
       const depth = new Array(n).fill(0);
       let maxDepth = 0;
       for (let i=0;i<n;i++){
         let d = 0;
         let cur = i;
-        while (parent[cur] != null){
+        while (persistentParent[cur] != null){
           d++;
-          cur = parent[cur];
-          if (d>50) break;
+          cur = persistentParent[cur];
+          if (d>200) break;
         }
         depth[i]=d;
         if (d>maxDepth) maxDepth=d;
       }
-      const levelH = maxDepth > 0 ? (height - padY*2) / (maxDepth+1) : (height - padY*2)/2;
+      // use a fixed comfortable vertical spacing per level
+      let levelH = LEVEL_HEIGHT;
 
-      // draw edges
-      treeCtx.lineWidth = 2;
+      // ---------- new layout: recursive subtree centering ----------
+      // build children lists from persistentParent
+      const children = new Array(n).fill(0).map(()=>[]);
       for (let i=0;i<n;i++){
-        const p = parent[i];
-        if (p != null){
-          const x1 = xForIndex(p);
-          const y1 = padY + depth[p]*levelH + 12;
-          const x2 = xForIndex(i);
-          const y2 = padY + depth[i]*levelH + 12;
-          treeCtx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--text').trim() || '#e6eef8';
-          treeCtx.beginPath();
-          treeCtx.moveTo(x1,y1);
-          treeCtx.lineTo(x2,y2);
-          treeCtx.stroke();
+        const pidx = persistentParent[i];
+        if (pidx != null && pidx >= 0 && pidx < n) children[pidx].push(i);
+      }
+
+      // find roots (nodes that are not children of any node)
+      const isChild = new Array(n).fill(false);
+      for (let i=0;i<n;i++){ for (const c of children[i]) isChild[c] = true; }
+      const roots = [];
+      for (let i=0;i<n;i++){ if (!isChild[i]) roots.push(i); }
+
+      // count leaves per subtree
+      const leafCount = new Array(n).fill(-1);
+      function countLeaves(u){
+        if (leafCount[u] !== -1) return leafCount[u];
+        if (!children[u] || children[u].length === 0) return leafCount[u] = 1;
+        let s = 0; for (const c of children[u]) s += countLeaves(c); return leafCount[u] = s;
+      }
+      let totalLeaves = 0;
+      for (const r of roots) totalLeaves += countLeaves(r);
+      if (totalLeaves === 0) totalLeaves = n; // fallback
+
+      const leafSpacing = usableW / totalLeaves;
+      let nextLeaf = 0;
+      const xPositions = new Array(n).fill(null);
+
+      function assignX(u){
+        const ch = children[u];
+        if (!ch || ch.length === 0){
+          const x = padX + (nextLeaf + 0.5) * leafSpacing;
+          xPositions[u] = x;
+          nextLeaf++;
+        } else {
+          for (const c of ch) assignX(c);
+          if (ch.length === 1) {
+            // LEFT-bias single child: parent sits to the right of its single child
+            const c = ch[0];
+            xPositions[u] = xPositions[c] + (leafSpacing / 2);
+          } else {
+            let sum = 0; for (const c of ch) sum += xPositions[c];
+            xPositions[u] = sum / ch.length;
+          }
         }
       }
 
-      // draw nodes
+      // process roots left-to-right
+      for (const r of roots){ assignX(r); }
+
+      // fallback: nodes that somehow weren't assigned
+      for (let i=0;i<n;i++){ if (xPositions[i] == null) xPositions[i] = padX + (i/(Math.max(1,n-1))) * usableW; }
+
+      // Normalize X positions so the leftmost will become padX in normalized coords
+      let minX = Infinity, maxX = -Infinity;
+      for (let i=0;i<n;i++){ if (xPositions[i] < minX) minX = xPositions[i]; if (xPositions[i] > maxX) maxX = xPositions[i]; }
+      if (!isFinite(minX)) { minX = padX; maxX = padX + usableW; }
+      // Calculate node radius BEFORE computing contentWidth so we can account for node size
+      const nodeRadius = Math.min(20, Math.max(10, ((width) - 48) / Math.max(8,n)));
+      // Add node radius AND side padding to prevent clipping at edges
+      const contentWidth = (maxX - minX) + (nodeRadius * 2) + SIDE_PADDING;
+
+      // compute required height for the tree using fixed level height
+      const requiredHeight = padY*2 + (maxDepth) * levelH + 40; // extra padding
+
+      // compute final scale that fits both width and height
+      const scaleX = rect.width / contentWidth;
+      const scaleY = rect.height / requiredHeight;
+      const finalScale = Math.min(1, scaleX, scaleY);
+      currentScale = finalScale;
+
+      // compute offsets to center the content in canvas pixels
+      const offsetX = (rect.width - contentWidth * finalScale) / 2;
+      const offsetY = (rect.height - requiredHeight * finalScale) / 2;
+      currentOffsetX = offsetX; currentTopMargin = offsetY;
+
+      // create target positions for every node (normalized X coords)
+      targetPositions = new Array(n);
       for (let i=0;i<n;i++){
-        const x = xForIndex(i);
-        const y = padY + depth[i]*levelH;
-        const nodeRadius = Math.min(20, Math.max(10, usableW / Math.max(8,n)));
-        // pick color from bar element
+        if (!isAlgorithmFinished){
+          // Shift X by nodeRadius + SIDE_PADDING/2 to ensure nodes don't clip at edges
+          const x = (xPositions[i] - minX) + nodeRadius + (SIDE_PADDING / 2);
+          const y = padY + depth[i]*levelH;
+          targetPositions[i] = { x: x, y: y+12 };
+        } else {
+          // finished: linear center line (normalized to logical coords considering offsets/scale)
+          // Use nodeRadius + SIDE_PADDING/2 for consistent spacing with tree layout
+          const linearWidth = usableW - nodeRadius * 2;
+          const x = nodeRadius + (SIDE_PADDING / 2) + (i/(Math.max(1,n-1))) * linearWidth;
+          const y = (rect.height / 2 - currentTopMargin) / Math.max(1,currentScale);
+          targetPositions[i] = { x: x, y: y };
+        }
+      }
+
+      // initialize visual positions to target (if empty)
+      for (let i=0;i<targetPositions.length;i++){
+        if (!visualPositions[i]) visualPositions[i] = { x: targetPositions[i].x, y: targetPositions[i].y };
+      }
+    }
+
+    // animation loop: lerp visualPositions -> targetPositions and draw persistent edges/nodes
+    function animationLoop(){
+      // ensure we have targets
+      drawTreeStructure();
+
+      const rect = treeCanvas.getBoundingClientRect();
+      treeCtx.clearRect(0,0,rect.width,rect.height);
+
+      const n = arr.length;
+
+      // handle finish progression if algorithm finished
+      if (isAlgorithmFinished && finishProgress < 1){
+        finishProgress = Math.min(1, finishProgress + FINISH_SPEED);
+        if (finishProgress === 1){
+          // fully finished: clear persistent parents so edges stop being drawn in subsequent frames
+          persistentParent = new Array(n).fill(null);
+        }
+      }
+
+      // update visuals towards targets
+      for (let i=0;i<n;i++){
+        const t = targetPositions[i] || { x: (i/(Math.max(1,n-1)))*rect.width, y: rect.height - 20 };
+        if (!visualPositions[i]) visualPositions[i] = { x: t.x, y: t.y };
+        visualPositions[i].x += (t.x - visualPositions[i].x) * LERP;
+        visualPositions[i].y += (t.y - visualPositions[i].y) * LERP;
+      }
+
+      // draw edges for all persistent parent links (persistent)
+      treeCtx.lineWidth = 2;
+      const edgeColor = getComputedStyle(document.documentElement).getPropertyValue('--text').trim() || '#e6eef8';
+      // use alpha fading when finishing
+      const edgeAlpha = isAlgorithmFinished ? (1 - finishProgress) : 1;
+
+      // apply scaling/translation to keep tree within canvas
+      treeCtx.save();
+      // scale first so we can translate in logical units properly
+      treeCtx.scale(currentScale, currentScale);
+      // translate in pre-scale logical units so the post-scale content is centered
+      treeCtx.translate(currentOffsetX / Math.max(1,currentScale), currentTopMargin / Math.max(1,currentScale));
+
+      if (edgeAlpha > 0){
+        treeCtx.save();
+        treeCtx.globalAlpha = edgeAlpha;
+        treeCtx.strokeStyle = edgeColor;
+        for (let i=0;i<n;i++){
+          const p = persistentParent[i];
+          if (p != null && visualPositions[i] && visualPositions[p]){
+            const x1 = visualPositions[p].x;
+            const y1 = visualPositions[p].y;
+            const x2 = visualPositions[i].x;
+            const y2 = visualPositions[i].y;
+            treeCtx.beginPath();
+            treeCtx.moveTo(x1,y1);
+            treeCtx.lineTo(x2,y2);
+            treeCtx.stroke();
+          }
+        }
+        treeCtx.restore();
+      }
+
+      // draw nodes using visual positions
+      const nodeRadius = Math.min(20, Math.max(10, ((rect.width) - 48) / Math.max(8,n)));
+      for (let i=0;i<n;i++){
+        const vp = visualPositions[i];
+        if (!vp) continue;
+        // pick color based on bar state
         const b = barsEl.querySelector(`.bar[data-index='${i}']`);
         let fill = getComputedStyle(document.documentElement).getPropertyValue('--bar').trim();
         if (b){
@@ -251,21 +434,27 @@
           else if (b.classList.contains('move')) fill = getComputedStyle(document.documentElement).getPropertyValue('--move').trim();
           else if (b.classList.contains('done')) fill = getComputedStyle(document.documentElement).getPropertyValue('--done').trim();
         }
+
         treeCtx.beginPath();
         treeCtx.fillStyle = fill;
         treeCtx.strokeStyle = '#021022';
         treeCtx.lineWidth = 1;
-        treeCtx.arc(x, y+12, nodeRadius, 0, Math.PI*2);
+        treeCtx.arc(vp.x, vp.y, nodeRadius, 0, Math.PI*2);
         treeCtx.fill();
         treeCtx.stroke();
 
-        // text
         treeCtx.fillStyle = '#021022';
         treeCtx.font = `${Math.max(10, nodeRadius-6)}px sans-serif`;
         treeCtx.textAlign = 'center';
         treeCtx.textBaseline = 'middle';
-        treeCtx.fillText(String(arr[i]), x, y+12);
+        const displayVal = (visualValues && visualValues.length === arr.length) ? visualValues[i] : arr[i];
+        treeCtx.fillText(String(displayVal), vp.x, vp.y);
       }
+
+      // restore transform after drawing
+      treeCtx.restore();
+
+      requestAnimationFrame(animationLoop);
     }
 
     // globalState to hold current head/p/pshift for visualization
@@ -417,9 +606,11 @@
       if (!raw) return alert('請輸入數字');
       const parts = raw.split(/\s+/).map(x=>Number(x)).filter(x=>!Number.isNaN(x));
       if (!parts.length) return alert('找不到有效數字');
-      arr = parts.slice(); original = parts.slice();
+      arr = parts.slice(); original = parts.slice(); visualValues = arr.slice();
       // reset visualization global state
       globalState.head = 0; globalState.p = 1 >>> 0; globalState.pshift = 1; drawTreeStructure();
+      // reset persistent/final flags
+      isAlgorithmFinished = false; finishProgress = 0; persistentParent = [];
       renderBars();
       // disable UI
       btnStart.disabled = true; input.disabled = true; delayRange.disabled = true; btnReset.disabled = true;
@@ -428,6 +619,8 @@
         await smoothSortAnimated(arr);
         // mark final
         markAllDone();
+        // begin finish animation: fade edges and move nodes to linear
+        isAlgorithmFinished = true; finishProgress = 0;
       } catch (err) {
         console.error(err);
         alert('排序過程發生錯誤，請看 console 訊息。');
@@ -437,8 +630,10 @@
     });
 
     btnReset.addEventListener('click', ()=>{
-      arr = original.slice();
+      arr = original.slice(); visualValues = arr.slice();
       globalState.head = 0; globalState.p = 1 >>> 0; globalState.pshift = 1;
+      // reset persistent/final flags and visual positions for fresh start
+      isAlgorithmFinished = false; finishProgress = 0; persistentParent = []; targetPositions = []; visualPositions = [];
       renderBars();
     });
 
@@ -447,8 +642,9 @@
 
     // initial demo
     input.value = '3 1 4 5 2 10 9 8 7';
-    arr = input.value.split(/\s+/).map(x=>Number(x));
-    globalState.head = 0; globalState.p = 1 >>> 0; globalState.pshift = 1; renderBars();
+    arr = input.value.split(/\s+/).map(x=>Number(x)); visualValues = arr.slice();
+    globalState.head = 0; globalState.p = 1 >>> 0; globalState.pshift = 1; isAlgorithmFinished = false; finishProgress = 0; persistentParent = [];
+    renderBars();
 
   </script>
 </body>
