@@ -50,6 +50,11 @@
       <div class="small">比較時為 <span style="color:var(--compare)">紅色</span>，交換/移動為 <span style="color:var(--move)">黃色</span>，完成為 <span style="color:var(--done)">綠色</span></div>
     </div>
 
+    <div class="visual-wrap" style="margin-top:12px;">
+      <canvas id="treeCanvas" width="900" height="260" style="width:100%;height:260px;background:rgba(255,255,255,0.01);border-radius:8px;border:1px solid rgba(255,255,255,0.02)"></canvas>
+      <div class="small">樹形結構（Leonardo heaps）視覺化 — 節點代表陣列上的元素，線代表父/子關係。</div>
+    </div>
+
     <div class="footer">說明：此視覺化使用 Leonardo numbers 建立一個 Leonardo-heap forest，再進行 trinkle 與 sift 操作以排序。可調整延遲觀察細節。</div>
   </div>
 
@@ -89,12 +94,16 @@
         bar.appendChild(label);
         barsEl.appendChild(bar);
       });
+      // after bars updated, also redraw tree
+      drawTreeStructure();
     }
 
     function setBarClass(i, cls, add=true) {
       const b = barsEl.querySelector(`.bar[data-index='${i}']`);
       if (!b) return;
       if (add) b.classList.add(cls); else b.classList.remove(cls);
+      // update tree visualization to reflect highlights
+      drawTreeStructure();
     }
 
     async function highlightCompare(i,j) {
@@ -126,7 +135,141 @@
     function markAllDone() {
       const bs = barsEl.querySelectorAll('.bar');
       bs.forEach(b=>{ b.classList.remove('compare'); b.classList.remove('move'); b.classList.add('done'); });
+      drawTreeStructure();
     }
+
+    // ---------- Tree Visualization (Canvas) ----------
+    const treeCanvas = document.getElementById('treeCanvas');
+    const treeCtx = treeCanvas.getContext('2d');
+
+    function resizeTreeCanvas(){
+      const rect = treeCanvas.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      treeCanvas.width = rect.width * dpr;
+      treeCanvas.height = rect.height * dpr;
+      treeCtx.setTransform(dpr,0,0,dpr,0,0);
+      drawTreeStructure();
+    }
+    window.addEventListener('resize', resizeTreeCanvas);
+    resizeTreeCanvas();
+
+    function buildHeapLinks(root, order, parent){
+      if (order <= 1) return;
+      const rt = root - 1;
+      const lf = root - 1 - LP[order - 2];
+      if (lf >=0 && lf < arr.length) parent[lf] = root;
+      if (rt >=0 && rt < arr.length) parent[rt] = root;
+      buildHeapLinks(lf, order - 2, parent);
+      buildHeapLinks(rt, order - 1, parent);
+    }
+
+    function getForest(head, p, pshift){
+      const parent = new Array(arr.length).fill(null);
+      let pTemp = p >>> 0;
+      let pshiftTemp = pshift;
+      let idx = head - 1;
+      while (pTemp !== 0 && idx >= 0){
+        if ((pTemp & 1) === 1){
+          // heap with root at idx of order pshiftTemp
+          if (idx >=0 && pshiftTemp >= 0) {
+            parent[idx] = null; // root has no parent
+            buildHeapLinks(idx, pshiftTemp, parent);
+            idx -= LP[pshiftTemp];
+            pTemp >>= 1;
+            pshiftTemp -= 1;
+          } else break;
+        } else {
+          idx -=1;
+          pTemp >>=1;
+          pshiftTemp +=1;
+        }
+      }
+      return parent;
+    }
+
+    function drawTreeStructure(){
+      if (!arr.length) {
+        treeCtx.clearRect(0,0,treeCanvas.width, treeCanvas.height);
+        return;
+      }
+      const parent = getForest(globalState.head, globalState.p, globalState.pshift);
+
+      const rect = treeCanvas.getBoundingClientRect();
+      const width = rect.width;
+      const height = rect.height;
+      treeCtx.clearRect(0,0,rect.width,rect.height);
+
+      const padX = 24;
+      const padY = 20;
+      const usableW = width - padX*2;
+      const n = arr.length;
+      const xForIndex = (i) => n <= 1 ? width/2 : padX + (i / (n - 1)) * usableW;
+
+      // compute depth by following parent chain
+      const depth = new Array(n).fill(0);
+      let maxDepth = 0;
+      for (let i=0;i<n;i++){
+        let d = 0;
+        let cur = i;
+        while (parent[cur] != null){
+          d++;
+          cur = parent[cur];
+          if (d>50) break;
+        }
+        depth[i]=d;
+        if (d>maxDepth) maxDepth=d;
+      }
+      const levelH = maxDepth > 0 ? (height - padY*2) / (maxDepth+1) : (height - padY*2)/2;
+
+      // draw edges
+      treeCtx.lineWidth = 2;
+      for (let i=0;i<n;i++){
+        const p = parent[i];
+        if (p != null){
+          const x1 = xForIndex(p);
+          const y1 = padY + depth[p]*levelH + 12;
+          const x2 = xForIndex(i);
+          const y2 = padY + depth[i]*levelH + 12;
+          treeCtx.strokeStyle = getComputedStyle(document.documentElement).getPropertyValue('--text').trim() || '#e6eef8';
+          treeCtx.beginPath();
+          treeCtx.moveTo(x1,y1);
+          treeCtx.lineTo(x2,y2);
+          treeCtx.stroke();
+        }
+      }
+
+      // draw nodes
+      for (let i=0;i<n;i++){
+        const x = xForIndex(i);
+        const y = padY + depth[i]*levelH;
+        const nodeRadius = Math.min(20, Math.max(10, usableW / Math.max(8,n)));
+        // pick color from bar element
+        const b = barsEl.querySelector(`.bar[data-index='${i}']`);
+        let fill = getComputedStyle(document.documentElement).getPropertyValue('--bar').trim();
+        if (b){
+          if (b.classList.contains('compare')) fill = getComputedStyle(document.documentElement).getPropertyValue('--compare').trim();
+          else if (b.classList.contains('move')) fill = getComputedStyle(document.documentElement).getPropertyValue('--move').trim();
+          else if (b.classList.contains('done')) fill = getComputedStyle(document.documentElement).getPropertyValue('--done').trim();
+        }
+        treeCtx.beginPath();
+        treeCtx.fillStyle = fill;
+        treeCtx.strokeStyle = '#021022';
+        treeCtx.lineWidth = 1;
+        treeCtx.arc(x, y+12, nodeRadius, 0, Math.PI*2);
+        treeCtx.fill();
+        treeCtx.stroke();
+
+        // text
+        treeCtx.fillStyle = '#021022';
+        treeCtx.font = `${Math.max(10, nodeRadius-6)}px sans-serif`;
+        treeCtx.textAlign = 'center';
+        treeCtx.textBaseline = 'middle';
+        treeCtx.fillText(String(arr[i]), x, y+12);
+      }
+    }
+
+    // globalState to hold current head/p/pshift for visualization
+    const globalState = { head: 0, p: 1 >>> 0, pshift: 1 };
 
     // ---------- Smoothsort Implementation (port of Java/Wikibooks) ----------
     const LP = [1,1,3,5,9,15,25,41,67,109,177,287,465,753,1219,1973,3193,5167,8361,13529,21891,35421,57313,92735,150049,242785,392835,635621,1028457,1664079,2692537,4356617,7049155,11405773,18454929,29860703,48315633,78176337,126491971,204668309,331160281,535828591,866988873];
@@ -161,9 +304,16 @@
           head = rt;
           pshift -= 2;
         }
+        // update global state so tree visualization stays in sync
+        globalState.head = head;
+        globalState.pshift = pshift;
+        drawTreeStructure();
       }
       // place val into head
       await placeValue(head, val);
+      globalState.head = head;
+      globalState.pshift = pshift;
+      drawTreeStructure();
     }
 
     async function trinkle(m, p, pshift, head, trusty) {
@@ -186,10 +336,17 @@
         // move stepson up
         await animateAssign(head, stepson);
         head = stepson;
+        // update global state to reflect head change
+        globalState.head = head;
+        drawTreeStructure();
 
         const trail = ctz(p & ~1 >>> 0);
         p >>>= trail;
         pshift += trail;
+        // update global state to reflect p/pshift change
+        globalState.p = p;
+        globalState.pshift = pshift;
+        drawTreeStructure();
         trusty = false;
       }
       if (!trusty) {
@@ -206,7 +363,13 @@
       let p = 1 >>> 0;
       let pshift = 1;
 
+      // initial global state
+      globalState.head = head; globalState.p = p; globalState.pshift = pshift; drawTreeStructure();
+
       while (head < n) {
+        // keep global state updated for visualization
+        globalState.head = head; globalState.p = p; globalState.pshift = pshift; drawTreeStructure();
+
         if ((p & 3) === 3) {
           await sift(m, pshift, head);
           p >>>= 2;
@@ -223,6 +386,9 @@
         }
         p |= 1;
         head++;
+
+        // update global state after changes
+        globalState.head = head; globalState.p = p; globalState.pshift = pshift; drawTreeStructure();
       }
 
       await trinkle(m, p, pshift, head - 1, false);
@@ -241,6 +407,7 @@
           await trinkle(m, p, pshift, head - 1, true);
         }
         head--;
+        globalState.head = head; globalState.p = p; globalState.pshift = pshift; drawTreeStructure();
       }
     }
 
@@ -251,6 +418,8 @@
       const parts = raw.split(/\s+/).map(x=>Number(x)).filter(x=>!Number.isNaN(x));
       if (!parts.length) return alert('找不到有效數字');
       arr = parts.slice(); original = parts.slice();
+      // reset visualization global state
+      globalState.head = 0; globalState.p = 1 >>> 0; globalState.pshift = 1; drawTreeStructure();
       renderBars();
       // disable UI
       btnStart.disabled = true; input.disabled = true; delayRange.disabled = true; btnReset.disabled = true;
@@ -268,7 +437,9 @@
     });
 
     btnReset.addEventListener('click', ()=>{
-      arr = original.slice(); renderBars();
+      arr = original.slice();
+      globalState.head = 0; globalState.p = 1 >>> 0; globalState.pshift = 1;
+      renderBars();
     });
 
     // allow pressing Enter to start
@@ -276,7 +447,8 @@
 
     // initial demo
     input.value = '3 1 4 5 2 10 9 8 7';
-    arr = input.value.split(/\s+/).map(x=>Number(x)); renderBars();
+    arr = input.value.split(/\s+/).map(x=>Number(x));
+    globalState.head = 0; globalState.p = 1 >>> 0; globalState.pshift = 1; renderBars();
 
   </script>
 </body>
