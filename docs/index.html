@@ -1,0 +1,283 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Smooth Sort Visualizer</title>
+  <style>
+    :root{
+      --bg:#0f1724; --panel:#0b1220; --bar:#3b82f6; --compare:#ef4444; --move:#f59e0b; --done:#10b981; --text:#e6eef8;
+      --max-height:360px; --gap:6px;
+    }
+    *{box-sizing:border-box}
+    body{margin:0; font-family:Inter,ui-sans-serif,system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:linear-gradient(180deg,#071024 0%, #041021 100%); color:var(--text);}
+    .wrap{max-width:980px;margin:28px auto;padding:20px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
+    h1{margin:0 0 12px 0;font-size:20px}
+    .controls{display:flex;gap:10px;align-items:center;margin-bottom:14px}
+    input[type=text]{flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:var(--text)}
+    button{padding:10px 14px;border-radius:8px;border:none;cursor:pointer;background:#1f2937;color:var(--text)}
+    button:disabled{opacity:0.4;cursor:not-allowed}
+    .info{font-size:13px;color:#9fb0d7;margin-left:6px}
+
+    .visual-wrap{margin-top:18px;padding:14px;background:rgba(255,255,255,0.02);border-radius:10px;border:1px solid rgba(255,255,255,0.02)}
+    .bars{display:flex;align-items:flex-end;gap:var(--gap);height:var(--max-height);padding:12px}
+
+    .bar{flex:1 1 auto;min-width:14px;display:flex;align-items:flex-end;justify-content:center;position:relative;transition:height 200ms ease, background 120ms ease, transform 200ms ease; border-radius:4px 4px 0 0}
+    .bar .label{position:absolute;bottom:4px;font-size:12px;color:#021022;transform:translateY(100%)}
+    .bar.compare{background:var(--compare);transform:translateY(-3px)}
+    .bar.move{background:var(--move);transform:translateY(-6px)}
+    .bar.done{background:var(--done);transform:none}
+
+    .small{font-size:13px;color:#9fb0d7;margin-top:8px}
+    .footer{margin-top:12px;font-size:13px;color:#7ea0d6}
+
+    @media (max-width:600px){ .bars{gap:4px} }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>🔧 Smooth Sort Visualizer (Dijkstra)</h1>
+    <div class="controls">
+      <input id="inputNumbers" type="text" placeholder="輸入數字，以空格分隔（例如：7 2 8 1 4 9）" />
+      <button id="btnStart">Start Sorting</button>
+      <button id="btnReset">Reset</button>
+      <div class="info">延遲: <span id="delayLabel">250</span>ms</div>
+      <input id="delayRange" type="range" min="20" max="800" value="250" style="width:160px;margin-left:8px"/>
+    </div>
+
+    <div class="visual-wrap">
+      <div id="bars" class="bars"></div>
+      <div class="small">比較時為 <span style="color:var(--compare)">紅色</span>，交換/移動為 <span style="color:var(--move)">黃色</span>，完成為 <span style="color:var(--done)">綠色</span></div>
+    </div>
+
+    <div class="footer">說明：此視覺化使用 Leonardo numbers 建立一個 Leonardo-heap forest，再進行 trinkle 與 sift 操作以排序。可調整延遲觀察細節。</div>
+  </div>
+
+  <script>
+    // Utility
+    const $ = (s) => document.querySelector(s);
+    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+    const input = $('#inputNumbers');
+    const btnStart = $('#btnStart');
+    const btnReset = $('#btnReset');
+    const barsEl = $('#bars');
+    const delayRange = $('#delayRange');
+    const delayLabel = $('#delayLabel');
+
+    let arr = [];
+    let original = [];
+    let delay = parseInt(delayRange.value,10);
+
+    delayRange.addEventListener('input', ()=>{ delay = parseInt(delayRange.value,10); delayLabel.textContent = delay; });
+
+    function renderBars() {
+      barsEl.innerHTML = '';
+      if (!arr.length) return;
+      const max = Math.max(...arr.map(v=>Math.abs(v)),1);
+      const maxH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--max-height')) || 360;
+      const scale = (maxH - 28) / max;
+      arr.forEach((val,i)=>{
+        const bar = document.createElement('div');
+        bar.className = 'bar';
+        bar.dataset.index = i;
+        bar.style.height = Math.max(8, Math.abs(val) * scale) + 'px';
+        bar.style.background = 'var(--bar)';
+        const label = document.createElement('div');
+        label.className = 'label';
+        label.textContent = String(val);
+        bar.appendChild(label);
+        barsEl.appendChild(bar);
+      });
+    }
+
+    function setBarClass(i, cls, add=true) {
+      const b = barsEl.querySelector(`.bar[data-index='${i}']`);
+      if (!b) return;
+      if (add) b.classList.add(cls); else b.classList.remove(cls);
+    }
+
+    async function highlightCompare(i,j) {
+      setBarClass(i,'compare',true); setBarClass(j,'compare',true);
+      await sleep(delay);
+      setBarClass(i,'compare',false); setBarClass(j,'compare',false);
+    }
+
+    async function animateAssign(target, source) {
+      // show movement: source -> target
+      setBarClass(source,'move',true); setBarClass(target,'move',true);
+      await sleep(delay/1.2);
+      // actually assign value
+      arr[target] = arr[source];
+      renderBars();
+      await sleep(delay/1.2);
+      setBarClass(source,'move',false); setBarClass(target,'move',false);
+    }
+
+    async function placeValue(idx, value) {
+      setBarClass(idx,'move',true);
+      await sleep(delay/2);
+      arr[idx] = value;
+      renderBars();
+      await sleep(delay/2);
+      setBarClass(idx,'move',false);
+    }
+
+    function markAllDone() {
+      const bs = barsEl.querySelectorAll('.bar');
+      bs.forEach(b=>{ b.classList.remove('compare'); b.classList.remove('move'); b.classList.add('done'); });
+    }
+
+    // ---------- Smoothsort Implementation (port of Java/Wikibooks) ----------
+    const LP = [1,1,3,5,9,15,25,41,67,109,177,287,465,753,1219,1973,3193,5167,8361,13529,21891,35421,57313,92735,150049,242785,392835,635621,1028457,1664079,2692537,4356617,7049155,11405773,18454929,29860703,48315633,78176337,126491971,204668309,331160281,535828591,866988873];
+
+    function ctz(x){
+      // count trailing zeros of 32-bit unsigned
+      if (x === 0) return 32;
+      let c = 0;
+      while ((x & 1) === 0) { x >>>= 1; c++; }
+      return c;
+    }
+
+    async function sift(m, pshift, head) {
+      let val = m[head];
+      while (pshift > 1) {
+        const rt = head - 1;
+        const lf = head - 1 - LP[pshift - 2];
+
+        // compare val with children
+        // We animate comparisons with values at lf and rt
+        await highlightCompare(head, lf);
+        await highlightCompare(head, rt);
+
+        if (val >= m[lf] && val >= m[rt]) break;
+        if (m[lf] >= m[rt]) {
+          // m[head] = m[lf]; head = lf; pshift -=1;
+          await animateAssign(head, lf);
+          head = lf;
+          pshift -= 1;
+        } else {
+          await animateAssign(head, rt);
+          head = rt;
+          pshift -= 2;
+        }
+      }
+      // place val into head
+      await placeValue(head, val);
+    }
+
+    async function trinkle(m, p, pshift, head, trusty) {
+      let val = m[head];
+      while (p !== 1) {
+        const stepson = head - LP[pshift];
+        // compare stepson with val
+        await highlightCompare(head, stepson);
+        if (m[stepson] <= val) break;
+
+        if (!trusty && pshift > 1) {
+          const rt = head - 1;
+          const lf = head - 1 - LP[pshift - 2];
+          // if either child >= stepson then break
+          await highlightCompare(rt, stepson);
+          await highlightCompare(lf, stepson);
+          if (m[rt] >= m[stepson] || m[lf] >= m[stepson]) break;
+        }
+
+        // move stepson up
+        await animateAssign(head, stepson);
+        head = stepson;
+
+        const trail = ctz(p & ~1 >>> 0);
+        p >>>= trail;
+        pshift += trail;
+        trusty = false;
+      }
+      if (!trusty) {
+        await placeValue(head, val);
+        await sift(m, pshift, head);
+      }
+    }
+
+    async function smoothSortAnimated(m) {
+      const n = m.length;
+      if (n < 2) return;
+
+      let head = 0;
+      let p = 1 >>> 0;
+      let pshift = 1;
+
+      while (head < n) {
+        if ((p & 3) === 3) {
+          await sift(m, pshift, head);
+          p >>>= 2;
+          pshift += 2;
+        } else {
+          if (LP[pshift - 1] >= n - head) {
+            await trinkle(m, p, pshift, head, false);
+          } else {
+            await sift(m, pshift, head);
+          }
+
+          if (pshift === 1) { p <<= 1; pshift = 0; }
+          else { p <<= (pshift - 1); pshift = 1; }
+        }
+        p |= 1;
+        head++;
+      }
+
+      await trinkle(m, p, pshift, head - 1, false);
+
+      while (pshift !== 1 || p !== 1) {
+        if (pshift <= 1) {
+          const trail = ctz(p & ~1 >>> 0);
+          p >>>= trail;
+          pshift += trail;
+        } else {
+          p <<= 2;
+          p ^= 7;
+          pshift -= 2;
+
+          await trinkle(m, p >>> 1, pshift + 1, head - LP[pshift] - 1, true);
+          await trinkle(m, p, pshift, head - 1, true);
+        }
+        head--;
+      }
+    }
+
+    // ---------- UI / Wiring ----------
+    btnStart.addEventListener('click', async ()=>{
+      const raw = input.value.trim();
+      if (!raw) return alert('請輸入數字');
+      const parts = raw.split(/\s+/).map(x=>Number(x)).filter(x=>!Number.isNaN(x));
+      if (!parts.length) return alert('找不到有效數字');
+      arr = parts.slice(); original = parts.slice();
+      renderBars();
+      // disable UI
+      btnStart.disabled = true; input.disabled = true; delayRange.disabled = true; btnReset.disabled = true;
+
+      try {
+        await smoothSortAnimated(arr);
+        // mark final
+        markAllDone();
+      } catch (err) {
+        console.error(err);
+        alert('排序過程發生錯誤，請看 console 訊息。');
+      }
+
+      btnStart.disabled = false; input.disabled = false; delayRange.disabled = false; btnReset.disabled = false;
+    });
+
+    btnReset.addEventListener('click', ()=>{
+      arr = original.slice(); renderBars();
+    });
+
+    // allow pressing Enter to start
+    input.addEventListener('keydown', (e)=>{ if (e.key === 'Enter') btnStart.click(); });
+
+    // initial demo
+    input.value = '3 1 4 5 2 10 9 8 7';
+    arr = input.value.split(/\s+/).map(x=>Number(x)); renderBars();
+
+  </script>
+</body>
+</html>
