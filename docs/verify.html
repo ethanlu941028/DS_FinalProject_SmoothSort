@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Smooth Sort 邏輯驗證</title>
+    <style>
+        body { font-family: monospace; white-space: pre; line-height: 1.6; }
+        .correct { color: green; }
+        .wrong { color: red; }
+    </style>
+</head>
+<body>
+<h1>Smooth Sort 堆森林構造驗證</h1>
+
+<div id="output"></div>
+
+<script>
+const LEONARDO = [1, 1, 3, 5, 9, 15, 25, 41, 67, 109, 177, 287, 465, 753];
+const testArray = [7, 2, 8, 1, 4, 9];
+let output = '';
+
+output += '輸入陣列: ' + testArray.join(', ') + '\n\n';
+output += '預期結果:\n';
+output += '  步驟1: L(1)           [root=7]\n';
+output += '  步驟2: L(1) L(0)      [root=7] [root=2]\n';
+output += '  步驟3: L(2)           [root=8 with children 7,2]\n';
+output += '  步驟4: L(2) L(0)      [root=8,...] [root=1]\n';
+output += '  步驟5: L(2) L(1)      [root=8,...] [root=4]\n';
+output += '  步驟6: L(2) L(2)      [root=8,...] [root=9 with children 4,1]\n';
+output += '\n';
+
+const forest = [];
+
+for (let i = 0; i < testArray.length; i++) {
+    const value = testArray[i];
+    output += `實際步驟${i + 1}: 讀取 ${value}\n`;
+    
+    let newIdx = 0;
+    if (forest.length === 0) {
+        newIdx = 1;
+    } else {
+        const lastHeap = forest[forest.length - 1];
+        if (lastHeap.leonardoIndex === 0) {
+            newIdx = 1;
+        }
+    }
+    
+    output += `  新堆: L(${newIdx})\n`;
+    
+    let merged = false;
+    if (forest.length >= 2) {
+        const lastHeap = forest[forest.length - 1];
+        const secondLastHeap = forest[forest.length - 2];
+        const lastIdx = lastHeap.leonardoIndex;
+        const secondLastIdx = secondLastHeap.leonardoIndex;
+        
+        if (secondLastIdx === lastIdx + 1) {
+            const mergedIdx = secondLastIdx + 1;
+            output += `  合併: L(${secondLastIdx}) + L(${lastIdx}) + L(${newIdx}) → L(${mergedIdx})\n`;
+            
+            const mergedHeap = {
+                root: i,
+                size: LEONARDO[mergedIdx],
+                leonardoIndex: mergedIdx
+            };
+            
+            forest.pop();
+            forest.pop();
+            forest.push(mergedHeap);
+            merged = true;
+        }
+    }
+    
+    if (!merged) {
+        const newHeap = {
+            root: i,
+            size: LEONARDO[newIdx],
+            leonardoIndex: newIdx
+        };
+        forest.push(newHeap);
+    }
+    
+    const forestStr = '[' + forest.map(h => `L(${h.leonardoIndex})`).join(' ') + ']';
+    output += `  森林: ${forestStr}\n\n`;
+}
+
+document.getElementById('output').innerHTML = '<span class="correct">' + output + '</span>';
+</script>
+</body>
+</html>

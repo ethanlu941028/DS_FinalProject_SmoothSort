@@ -1,651 +1,865 @@
-<!doctype html>
-<html lang="zh-Hant">
+<!DOCTYPE html>
+<html lang="zh-TW">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>Smooth Sort Visualizer</title>
-  <style>
-    :root{
-      --bg:#0f1724; --panel:#0b1220; --bar:#3b82f6; --compare:#ef4444; --move:#f59e0b; --done:#10b981; --text:#e6eef8;
-      --max-height:360px; --gap:6px;
-    }
-    *{box-sizing:border-box}
-    body{margin:0; font-family:Inter,ui-sans-serif,system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial; background:linear-gradient(180deg,#071024 0%, #041021 100%); color:var(--text);}
-    .wrap{max-width:980px;margin:28px auto;padding:20px;background:linear-gradient(180deg, rgba(255,255,255,0.02), transparent);border-radius:12px;border:1px solid rgba(255,255,255,0.03)}
-    h1{margin:0 0 12px 0;font-size:20px}
-    .controls{display:flex;gap:10px;align-items:center;margin-bottom:14px}
-    input[type=text]{flex:1;padding:10px;border-radius:8px;border:1px solid rgba(255,255,255,0.06);background:rgba(255,255,255,0.02);color:var(--text)}
-    button{padding:10px 14px;border-radius:8px;border:none;cursor:pointer;background:#1f2937;color:var(--text)}
-    button:disabled{opacity:0.4;cursor:not-allowed}
-    .info{font-size:13px;color:#9fb0d7;margin-left:6px}
-
-    .visual-wrap{margin-top:18px;padding:14px;background:rgba(255,255,255,0.02);border-radius:10px;border:1px solid rgba(255,255,255,0.02)}
-    .bars{display:flex;align-items:flex-end;gap:var(--gap);height:var(--max-height);padding:12px}
-
-    .bar{flex:1 1 auto;min-width:14px;display:flex;align-items:flex-end;justify-content:center;position:relative;transition:height 200ms ease, background 120ms ease, transform 200ms ease; border-radius:4px 4px 0 0}
-    .bar .label{position:absolute;bottom:4px;font-size:12px;color:#021022;transform:translateY(100%)}
-    .bar.compare{background:var(--compare);transform:translateY(-3px)}
-    .bar.move{background:var(--move);transform:translateY(-6px)}
-    .bar.done{background:var(--done);transform:none}
-
-    .small{font-size:13px;color:#9fb0d7;margin-top:8px}
-    .footer{margin-top:12px;font-size:13px;color:#7ea0d6}
-
-    @media (max-width:600px){ .bars{gap:4px} }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smooth Sort 演算法視覺化 - Leonardo 堆森林</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: linear-gradient(135deg, #1e1e1e 0%, #2d2d2d 100%);
+            color: #d4d4d4;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+        h1 {
+            font-weight: 300;
+            color: #4ec9b0;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+        .subtitle {
+            color: #858585;
+            font-size: 13px;
+            margin-bottom: 20px;
+            text-align: center;
+        }
+        #controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            margin-bottom: 20px;
+            padding: 15px 20px;
+            background-color: #252526;
+            border-radius: 8px;
+            border: 1px solid #3c3c3c;
+            flex-wrap: wrap;
+            width: 100%;
+            max-width: 1400px;
+        }
+        #controls input[type="text"] {
+            padding: 10px 12px;
+            border: 1px solid #3c3c3c;
+            background-color: #3c3c3c;
+            color: #d4d4d4;
+            border-radius: 4px;
+            min-width: 250px;
+            font-size: 14px;
+        }
+        #controls button {
+            padding: 10px 20px;
+            border: none;
+            background-color: #0e639c;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+        #controls button:hover:not(:disabled) {
+            background-color: #1177bb;
+        }
+        #controls button:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-left: auto;
+        }
+        .slider-container label {
+            white-space: nowrap;
+            font-size: 13px;
+        }
+        #speed-slider {
+            cursor: pointer;
+            width: 120px;
+        }
+        #speed-value {
+            font-size: 13px;
+            min-width: 45px;
+        }
+        .main-container {
+            width: 100%;
+            max-width: 1400px;
+            display: flex;
+            gap: 20px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+        #canvas-section {
+            flex: 1;
+            min-width: 500px;
+            background-color: #252526;
+            border: 1px solid #3c3c3c;
+            border-radius: 8px;
+            padding: 15px;
+        }
+        canvas {
+            background-color: #1e1e1e;
+            border: 1px solid #3c3c3c;
+            border-radius: 4px;
+            width: 100%;
+            height: auto;
+            display: block;
+        }
+        #info-panel {
+            width: 320px;
+            background-color: #252526;
+            border: 1px solid #3c3c3c;
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+            max-height: 700px;
+            overflow-y: auto;
+        }
+        .panel-section {
+            border-bottom: 1px solid #3c3c3c;
+            padding-bottom: 12px;
+        }
+        .panel-section:last-child {
+            border-bottom: none;
+        }
+        .section-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: #4ec9b0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+        .state-description {
+            font-size: 13px;
+            line-height: 1.5;
+            color: #d4d4d4;
+        }
+        .heap-info {
+            font-size: 12px;
+            font-family: 'Courier New', monospace;
+            background-color: #1e1e1e;
+            padding: 8px;
+            border-radius: 4px;
+            margin: 4px 0;
+            color: #9cdcfe;
+        }
+        .legend {
+            font-size: 11px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+        .legend-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .legend-color {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            border: 1px solid #4ec9b0;
+        }
+        .legend-item.blue .legend-color {
+            background-color: #569cd6;
+        }
+        .legend-item.gold .legend-color {
+            background-color: #dcdcaa;
+        }
+        .legend-item.red .legend-color {
+            background-color: #d16969;
+        }
+        .legend-item.green .legend-color {
+            background-color: #6a9955;
+        }
+        .button-group {
+            display: flex;
+            gap: 10px;
+        }
+        #prev-step, #next-step {
+            flex: 1;
+            padding: 8px 12px;
+            border: none;
+            background-color: #0e639c;
+            color: white;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 500;
+            transition: background-color 0.3s;
+        }
+        #prev-step:hover:not(:disabled), #next-step:hover:not(:disabled) {
+            background-color: #1177bb;
+        }
+        #prev-step:disabled, #next-step:disabled {
+            background-color: #555;
+            cursor: not-allowed;
+            opacity: 0.6;
+        }
+        .step-counter {
+            text-align: center;
+            font-size: 12px;
+            color: #9cdcfe;
+            font-weight: 500;
+        }
+    </style>
 </head>
 <body>
-  <div class="wrap">
-    <h1>🔧 Smooth Sort Visualizer (Dijkstra)</h1>
-    <div class="controls">
-      <input id="inputNumbers" type="text" placeholder="輸入數字，以空格分隔（例如：7 2 8 1 4 9）" />
-      <button id="btnStart">Start Sorting</button>
-      <button id="btnReset">Reset</button>
-      <div class="info">延遲: <span id="delayLabel">500</span>ms</div>
-      <input id="delayRange" type="range" min="20" max="1200" value="500" style="width:220px;margin-left:8px"/>
+    <h1>🌲 Smooth Sort 視覺化 - Leonardo 堆森林</h1>
+    <p class="subtitle">X-Ray 演算法檢視：從底部陣列到頂部堆森林的完整視圖</p>
+    
+    <div id="controls">
+        <input type="text" id="number-input" placeholder="輸入數字，用空格分隔 (例如: 7 2 8 1 4 9)">
+        <button id="start-button">開始排序</button>
+        <button id="auto-play-button">自動播放</button>
+        <div class="slider-container">
+            <label for="speed-slider">速度:</label>
+            <input type="range" id="speed-slider" min="50" max="1500" value="600">
+            <span id="speed-value">600ms</span>
+        </div>
     </div>
 
-    <div class="visual-wrap">
-      <div id="bars" class="bars"></div>
-      <div class="small">比較時為 <span style="color:var(--compare)">紅色</span>，交換/移動為 <span style="color:var(--move)">黃色</span>，完成為 <span style="color:var(--done)">綠色</span></div>
+    <div class="main-container">
+        <div id="canvas-section">
+            <canvas id="sort-canvas"></canvas>
+        </div>
+        <div id="info-panel">
+            <div class="panel-section">
+                <div class="section-title">⚙️ 當前狀態</div>
+                <div class="state-description" id="state-text">準備就緒</div>
+            </div>
+            <div class="panel-section">
+                <div class="section-title">🏔️ 堆森林結構</div>
+                <div id="heap-structure"></div>
+            </div>
+            <div class="panel-section">
+                <div class="section-title">📊 統計</div>
+                <div class="heap-info" id="stats">已讀取: 0 / 步驟: 0</div>
+            </div>
+            <div class="panel-section">
+                <div class="section-title">🎨 圖例</div>
+                <div class="legend">
+                    <div class="legend-item blue"><div class="legend-color"></div> <span>合併中的子堆</span></div>
+                    <div class="legend-item gold"><div class="legend-color"></div> <span>新增的根節點</span></div>
+                    <div class="legend-item red"><div class="legend-color"></div> <span>根節點比較</span></div>
+                    <div class="legend-item green"><div class="legend-color"></div> <span>已排序</span></div>
+                </div>
+            </div>
+            <div class="panel-section">
+                <div class="step-counter" id="step-counter">步驟: 0/0</div>
+                <div class="button-group">
+                    <button id="prev-step">⬅️ 上一步</button>
+                    <button id="next-step">下一步 ➡️</button>
+                </div>
+            </div>
+        </div>
     </div>
 
-    <div class="visual-wrap" style="margin-top:12px;">
-      <canvas id="treeCanvas" width="900" height="520" style="width:100%;height:520px;background:rgba(255,255,255,0.01);border-radius:8px;border:1px solid rgba(255,255,255,0.02)"></canvas>
-      <div class="small">樹形結構（Leonardo heaps）視覺化 — 節點代表陣列上的元素，線代表父/子關係。</div>
-    </div>
+    <script>
+        // ============ Leonardo 數列常數 ============
+        const LEONARDO = [1, 1, 3, 5, 9, 15, 25, 41, 67, 109, 177, 287, 465, 753, 1219, 1973, 3193, 5167, 8361, 13529, 21891, 35421, 57313, 92735, 150049, 242785, 392835, 635621, 1028457, 1664079, 2692537, 4356617, 7049155, 11405773, 18454929, 29860703, 48315633, 78176337, 126491971, 204668309, 331160281, 535828591, 866988873];
 
-    <div class="footer">說明：此視覺化使用 Leonardo numbers 建立一個 Leonardo-heap forest，再進行 trinkle 與 sift 操作以排序。可調整延遲觀察細節。</div>
-  </div>
+        // ============ UI 元素 ============
+        const canvas = document.getElementById('sort-canvas');
+        const ctx = canvas.getContext('2d');
+        const numberInput = document.getElementById('number-input');
+        const startButton = document.getElementById('start-button');
+        const autoPlayButton = document.getElementById('auto-play-button');
+        const speedSlider = document.getElementById('speed-slider');
+        const speedValue = document.getElementById('speed-value');
+        const stateText = document.getElementById('state-text');
+        const heapStructure = document.getElementById('heap-structure');
+        const stats = document.getElementById('stats');
+        const stepCounter = document.getElementById('step-counter');
+        const prevStepBtn = document.getElementById('prev-step');
+        const nextStepBtn = document.getElementById('next-step');
 
-  <script>
-    // Utility
-    const $ = (s) => document.querySelector(s);
-    const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+        let animationSpeed = 600;
+        let isSorting = false;
+        let currentStep = 0;
+        let totalSteps = 0;
+        let isAutoPlaying = false;
+        let animationFrameId = null;
 
-    const input = $('#inputNumbers');
-    const btnStart = $('#btnStart');
-    const btnReset = $('#btnReset');
-    const barsEl = $('#bars');
-    const delayRange = $('#delayRange');
-    const delayLabel = $('#delayLabel');
+        // ============ 資料結構 ============
+        class SmoothSortVisualizer {
+            constructor(array) {
+                this.originalArray = [...array];
+                this.n = array.length;
+                this.steps = [];
+                this.elementValues = {};
+                
+                for (let i = 0; i < array.length; i++) {
+                    this.elementValues[i] = array[i];
+                }
+                
+                this.generateSteps();
+            }
 
-    let arr = [];
-    let original = [];
-    let visualValues = [];
-    let delay = parseInt(delayRange.value,10);
+            cloneHeap(heap) {
+                if (!heap) return null;
+                return {
+                    root: heap.root,
+                    size: heap.size,
+                    leonardoIndex: heap.leonardoIndex,
+                    leftChild: this.cloneHeap(heap.leftChild),
+                    rightChild: this.cloneHeap(heap.rightChild)
+                };
+            }
 
-    delayRange.addEventListener('input', ()=>{ delay = parseInt(delayRange.value,10); delayLabel.textContent = delay; });
+            generateSteps() {
+                this.steps = [];
+                const forest = [];
+                const sorted = [];
+                
+                // 建構階段 (Building Phase)
+                this.steps.push({
+                    type: 'phase_start',
+                    phase: 'BUILDING',
+                    message: '開始建構 Leonardo 堆森林...',
+                    forest: [],
+                    sorted: [],
+                    elementValues: {...this.elementValues}
+                });
 
-    function renderBars() {
-      barsEl.innerHTML = '';
-      if (!arr.length) return;
-      const values = (visualValues && visualValues.length === arr.length) ? visualValues : arr;
-      const max = Math.max(...values.map(v=>Math.abs(v)),1);
-      const maxH = parseInt(getComputedStyle(document.documentElement).getPropertyValue('--max-height')) || 360;
-      const scale = (maxH - 28) / max;
-      values.forEach((val,i)=>{
-        const bar = document.createElement('div');
-        bar.className = 'bar';
-        bar.dataset.index = i;
-        bar.style.height = Math.max(8, Math.abs(val) * scale) + 'px';
-        bar.style.background = 'var(--bar)';
-        const label = document.createElement('div');
-        label.className = 'label';
-        label.textContent = String(val);
-        bar.appendChild(label);
-        barsEl.appendChild(bar);
-      });
-      // after bars updated, also redraw tree
-      drawTreeStructure();
-    }
+                for (let i = 0; i < this.n; i++) {
+                    this.addElementSteps(i, forest, sorted);
+                }
 
-    function setBarClass(i, cls, add=true) {
-      const b = barsEl.querySelector(`.bar[data-index='${i}']`);
-      if (!b) return;
-      if (add) b.classList.add(cls); else b.classList.remove(cls);
-    }
+                this.steps.push({
+                    type: 'phase_end',
+                    phase: 'BUILDING',
+                    message: '堆森林建構完成。開始排序階段...',
+                    forest: forest.map(h => this.cloneHeap(h)),
+                    sorted: [...sorted],
+                    elementValues: {...this.elementValues}
+                });
 
-    async function highlightCompare(i,j) {
-      setBarClass(i,'compare',true); setBarClass(j,'compare',true);
-      await sleep(delay);
-      setBarClass(i,'compare',false); setBarClass(j,'compare',false);
-    }
+                // 排序階段 (Sorting Phase)
+                this.steps.push({
+                    type: 'phase_start',
+                    phase: 'SORTING',
+                    message: '開始萃取根節點進行排序...',
+                    forest: forest.map(h => this.cloneHeap(h)),
+                    sorted: [...sorted],
+                    elementValues: {...this.elementValues}
+                });
 
-    async function animateAssign(target, source) {
-      // show movement: source -> target
-      const moveVal = (visualValues && visualValues.length === arr.length) ? visualValues[source] : arr[source];
-      setBarClass(source,'move',true); setBarClass(target,'move',true);
-      await sleep(delay/1.2);
-      // Update underlying data but keep old visual values during animation
-      arr[target] = moveVal;
-      await sleep(delay/1.2);
-      // ATOMIC UPDATE: Now update visual values and redraw everything at once
-      if (!visualValues || visualValues.length !== arr.length) visualValues = arr.slice();
-      visualValues[target] = moveVal;
-      setBarClass(source,'move',false); setBarClass(target,'move',false);
-      renderBars();
-    }
+                while (forest.length > 0) {
+                    this.extractMaxSteps(forest, sorted);
+                }
 
-    async function placeValue(idx, value) {
-      setBarClass(idx,'move',true);
-      await sleep(delay/2);
-      arr[idx] = value;
-      await sleep(delay/2);
-      // ATOMIC UPDATE: Update visual value and redraw at the end
-      if (!visualValues || visualValues.length !== arr.length) visualValues = arr.slice();
-      visualValues[idx] = value;
-      setBarClass(idx,'move',false);
-      renderBars();
-    }
+                this.steps.push({
+                    type: 'phase_end',
+                    phase: 'SORTING',
+                    message: '排序完成！',
+                    forest: [],
+                    sorted: [...sorted],
+                    elementValues: {...this.elementValues}
+                });
+            }
 
-    function markAllDone() {
-      const bs = barsEl.querySelectorAll('.bar');
-      bs.forEach(b=>{ b.classList.remove('compare'); b.classList.remove('move'); b.classList.add('done'); });
-      renderBars();
-    }
+            addElementSteps(elementIndex, forest, sorted) {
+                const value = this.originalArray[elementIndex];
+                
+                this.steps.push({
+                    type: 'read_element',
+                    elementIndex,
+                    value,
+                    message: `讀取新元素: 索引[${elementIndex}] = ${value}`,
+                    forest: forest.map(h => this.cloneHeap(h)),
+                    sorted: [...sorted],
+                    elementValues: {...this.elementValues}
+                });
 
-    // ---------- Tree Visualization (Canvas) ----------
-    const treeCanvas = document.getElementById('treeCanvas');
-    const treeCtx = treeCanvas.getContext('2d');
+                // 每次添加新元素時，先創建一個新堆
+                // 在 Smooth Sort 中，新堆的 Leonardo 級別取決於當前森林的狀態
+                let newLeonardoIdx;
+                
+                if (forest.length === 0) {
+                    // 第一個元素：創建 L(1)
+                    newLeonardoIdx = 1;
+                } else {
+                    const lastHeapIdx = forest[forest.length - 1].leonardoIndex;
+                    
+                    // 如果最後一個堆是 L(0)，新堆應該是 L(1)，然後嘗試和它合併成 L(2)
+                    // 否則，新堆應該是 L(0)
+                    if (lastHeapIdx === 0) {
+                        newLeonardoIdx = 1;
+                    } else {
+                        newLeonardoIdx = 0;
+                    }
+                }
 
-    // animation state for smooth node movement
-    const LERP = 0.12; // interpolation factor (0-1), increase to speed up
-    const LEVEL_HEIGHT = 80; // fixed comfortable vertical spacing between levels
-    const SIDE_PADDING = 50; // horizontal padding to prevent node clipping at edges
-    let targetPositions = []; // {x,y} per index in logical coordinates
-    let visualPositions = []; // {x,y} per index for smooth animation
-    let parentGlobal = []; // immediate parent mapping returned from getForest (latest)
-    let persistentParent = []; // persistent parent mapping used for drawing until finish
-    let currentScale = 1; // scale factor applied to fit tall trees
-    let currentTopMargin = 0; // canvas pixel top margin for centering after scaling
-    let currentOffsetX = 0; // canvas pixel left offset used when centering scaled content
-    let animationStarted = false;
-    let isAlgorithmFinished = false; // when true, begin fade-to-linear
-    let finishProgress = 0; // 0..1 progress of finish animation
-    const FINISH_SPEED = 0.03; // per frame advancement of finish animation
+                const newHeapSize = LEONARDO[newLeonardoIdx];
+                const newHeap = {
+                    root: elementIndex,
+                    size: newHeapSize,
+                    leonardoIndex: newLeonardoIdx,
+                    leftChild: null,
+                    rightChild: null
+                };
 
-    function resizeTreeCanvas(){
-      const rect = treeCanvas.getBoundingClientRect();
-      const dpr = window.devicePixelRatio || 1;
-      treeCanvas.width = rect.width * dpr;
-      treeCanvas.height = rect.height * dpr;
-      treeCtx.setTransform(dpr,0,0,dpr,0,0);
-      // update targets; animation loop will draw
-      drawTreeStructure();
-      if (!animationStarted) { animationStarted = true; requestAnimationFrame(animationLoop); }
-    }
-    window.addEventListener('resize', resizeTreeCanvas);
-    resizeTreeCanvas();
+                // 嘗試合併: 如果最後兩個堆的大小分別是 L(k+1) 和 L(k)，加上新堆，就合併
+                if (forest.length >= 2) {
+                    const lastHeap = forest[forest.length - 1];
+                    const secondLastHeap = forest[forest.length - 2];
+                    
+                    const lastIdx = lastHeap.leonardoIndex;
+                    const secondLastIdx = secondLastHeap.leonardoIndex;
 
-    function buildHeapLinks(root, order, parent){
-      if (order <= 1) return;
-      const rt = root - 1;
-      const lf = root - 1 - LP[order - 2];
-      if (lf >=0 && lf < arr.length) parent[lf] = root;
-      if (rt >=0 && rt < arr.length) parent[rt] = root;
-      buildHeapLinks(lf, order - 2, parent);
-      buildHeapLinks(rt, order - 1, parent);
-    }
+                    // 合併條件：secondLastIdx === lastIdx + 1
+                    if (secondLastIdx === lastIdx + 1) {
+                        const mergedIdx = secondLastIdx + 1;
+                        const mergedSize = LEONARDO[mergedIdx];
 
-    function getForest(head, p, pshift){
-      const parent = new Array(arr.length).fill(null);
-      let pTemp = p >>> 0;
-      let pshiftTemp = pshift;
-      let idx = head - 1;
-      while (pTemp !== 0 && idx >= 0){
-        if ((pTemp & 1) === 1){
-          // heap with root at idx of order pshiftTemp
-          if (idx >=0 && pshiftTemp >= 0) {
-            parent[idx] = null; // root has no parent
-            buildHeapLinks(idx, pshiftTemp, parent);
-            idx -= LP[pshiftTemp];
-            pTemp >>= 1;
-            pshiftTemp -= 1;
-          } else break;
-        } else {
-          idx -=1;
-          pTemp >>=1;
-          pshiftTemp +=1;
-        }
-      }
-      return parent;
-    }
+                        this.steps.push({
+                            type: 'merge_heaps',
+                            message: `合併: L(${secondLastIdx}) [根: ${this.originalArray[secondLastHeap.root]}] + L(${lastIdx}) [根: ${this.originalArray[lastHeap.root]}] + 新元素 ${value} = L(${mergedIdx}) [新根: ${value}]`,
+                            forest: forest.map(h => this.cloneHeap(h)),
+                            sorted: [...sorted],
+                            elementValues: {...this.elementValues}
+                        });
 
-    // compute target positions (no immediate drawing) and store parent map
-    // compute target positions (no immediate drawing) and store/update persistent parent map
-    function drawTreeStructure(){
-      if (!arr.length) {
-        // clear targets and canvas
-        targetPositions = [];
-        parentGlobal = [];
-        persistentParent = [];
-        treeCtx.clearRect(0,0,treeCanvas.width, treeCanvas.height);
-        return;
-      }
+                        const mergedHeap = {
+                            root: elementIndex,
+                            size: mergedSize,
+                            leonardoIndex: mergedIdx,
+                            leftChild: this.cloneHeap(secondLastHeap),
+                            rightChild: this.cloneHeap(lastHeap)
+                        };
 
-      const parent = getForest(globalState.head, globalState.p, globalState.pshift);
-      parentGlobal = parent;
+                        forest.pop();
+                        forest.pop();
+                        forest.push(mergedHeap);
+                    } else {
+                        forest.push(newHeap);
+                    }
+                } else {
+                    // 堆數 < 2，直接添加
+                    forest.push(newHeap);
+                }
 
-      const rect = treeCanvas.getBoundingClientRect();
-      const width = rect.width;
-      const height = rect.height;
+                // 記錄添加後的狀態
+                this.steps.push({
+                    type: 'element_added',
+                    elementIndex,
+                    message: `当前堆森林: [${forest.map(h => `L(${h.leonardoIndex})`).join(', ')}]`,
+                    forest: forest.map(h => this.cloneHeap(h)),
+                    sorted: [...sorted],
+                    elementValues: {...this.elementValues}
+                });
 
-      const padX = 24;
-      const padY = 20;
-      const usableW = width - padX*2;
-      const n = arr.length;
+                // 執行根節點平衡
+                this.rebalanceRootsSteps(forest, sorted);
+            }
 
-      // update persistentParent: only overwrite if parent info exists; keep previous until finish
-      if (!persistentParent || persistentParent.length !== n) persistentParent = new Array(n).fill(null);
-      for (let i=0;i<n;i++){
-        if (parent[i] != null) persistentParent[i] = parent[i];
-        else if (isAlgorithmFinished) persistentParent[i] = null; // when finished, we will transition to linear
-      }
+            rebalanceRootsSteps(forest, sorted) {
+                if (forest.length < 2) return;
 
-      // compute depth by following persistent parent chain
-      const depth = new Array(n).fill(0);
-      let maxDepth = 0;
-      for (let i=0;i<n;i++){
-        let d = 0;
-        let cur = i;
-        while (persistentParent[cur] != null){
-          d++;
-          cur = persistentParent[cur];
-          if (d>200) break;
-        }
-        depth[i]=d;
-        if (d>maxDepth) maxDepth=d;
-      }
-      // use a fixed comfortable vertical spacing per level
-      let levelH = LEVEL_HEIGHT;
+                for (let i = forest.length - 2; i >= 0; i--) {
+                    const leftHeap = forest[i];
+                    const rightHeap = forest[i + 1];
+                    
+                    const leftRoot = this.elementValues[leftHeap.root];
+                    const rightRoot = this.elementValues[rightHeap.root];
 
-      // ---------- new layout: recursive subtree centering ----------
-      // build children lists from persistentParent
-      const children = new Array(n).fill(0).map(()=>[]);
-      for (let i=0;i<n;i++){
-        const pidx = persistentParent[i];
-        if (pidx != null && pidx >= 0 && pidx < n) children[pidx].push(i);
-      }
+                    if (leftRoot > rightRoot) {
+                        this.steps.push({
+                            type: 'compare_roots',
+                            message: `根節點比較: 左根 ${leftRoot} > 右根 ${rightRoot}？是。交換中...`,
+                            forest: forest.map(h => this.cloneHeap(h)),
+                            sorted: [...sorted],
+                            elementValues: {...this.elementValues},
+                            leftHeapIndex: i,
+                            rightHeapIndex: i + 1
+                        });
 
-      // find roots (nodes that are not children of any node)
-      const isChild = new Array(n).fill(false);
-      for (let i=0;i<n;i++){ for (const c of children[i]) isChild[c] = true; }
-      const roots = [];
-      for (let i=0;i<n;i++){ if (!isChild[i]) roots.push(i); }
+                        // 交換根節點
+                        [leftHeap.root, rightHeap.root] = [rightHeap.root, leftHeap.root];
 
-      // count leaves per subtree
-      const leafCount = new Array(n).fill(-1);
-      function countLeaves(u){
-        if (leafCount[u] !== -1) return leafCount[u];
-        if (!children[u] || children[u].length === 0) return leafCount[u] = 1;
-        let s = 0; for (const c of children[u]) s += countLeaves(c); return leafCount[u] = s;
-      }
-      let totalLeaves = 0;
-      for (const r of roots) totalLeaves += countLeaves(r);
-      if (totalLeaves === 0) totalLeaves = n; // fallback
+                        // 篩選 (Sift Down)
+                        this.steps.push({
+                            type: 'sift_down',
+                            message: `在左堆執行篩選以維持堆特性...`,
+                            forest: forest.map(h => this.cloneHeap(h)),
+                            sorted: [...sorted],
+                            elementValues: {...this.elementValues},
+                            heapIndex: i
+                        });
+                    }
+                }
+            }
 
-      const leafSpacing = usableW / totalLeaves;
-      let nextLeaf = 0;
-      const xPositions = new Array(n).fill(null);
+            extractMaxSteps(forest, sorted) {
+                if (forest.length === 0) return;
 
-      function assignX(u){
-        const ch = children[u];
-        if (!ch || ch.length === 0){
-          const x = padX + (nextLeaf + 0.5) * leafSpacing;
-          xPositions[u] = x;
-          nextLeaf++;
-        } else {
-          for (const c of ch) assignX(c);
-          if (ch.length === 1) {
-            // LEFT-bias single child: parent sits to the right of its single child
-            const c = ch[0];
-            xPositions[u] = xPositions[c] + (leafSpacing / 2);
-          } else {
-            let sum = 0; for (const c of ch) sum += xPositions[c];
-            xPositions[u] = sum / ch.length;
-          }
-        }
-      }
+                const maxHeap = forest[forest.length - 1];
+                const maxValue = this.elementValues[maxHeap.root];
 
-      // process roots left-to-right
-      for (const r of roots){ assignX(r); }
+                this.steps.push({
+                    type: 'extract_max',
+                    message: `萃取最大元素: ${maxValue}`,
+                    forest: forest.map(h => this.cloneHeap(h)),
+                    sorted: [...sorted],
+                    elementValues: {...this.elementValues},
+                    extractedElement: maxHeap.root
+                });
 
-      // fallback: nodes that somehow weren't assigned
-      for (let i=0;i<n;i++){ if (xPositions[i] == null) xPositions[i] = padX + (i/(Math.max(1,n-1))) * usableW; }
+                sorted.push(maxHeap.root);
+                forest.pop();
 
-      // Normalize X positions so the leftmost will become padX in normalized coords
-      let minX = Infinity, maxX = -Infinity;
-      for (let i=0;i<n;i++){ if (xPositions[i] < minX) minX = xPositions[i]; if (xPositions[i] > maxX) maxX = xPositions[i]; }
-      if (!isFinite(minX)) { minX = padX; maxX = padX + usableW; }
-      // Calculate node radius BEFORE computing contentWidth so we can account for node size
-      const nodeRadius = Math.min(20, Math.max(10, ((width) - 48) / Math.max(8,n)));
-      // Add node radius AND side padding to prevent clipping at edges
-      const contentWidth = (maxX - minX) + (nodeRadius * 2) + SIDE_PADDING;
+                // 如果提取的堆大小 > 1，則分裂為兩個較小的堆
+                if (maxHeap.size > 1) {
+                    const leonardoIdx = LEONARDO.indexOf(maxHeap.size);
+                    if (leonardoIdx > 0) {
+                        this.steps.push({
+                            type: 'split_heap',
+                            message: `分裂 L(${leonardoIdx}) 為 L(${leonardoIdx - 2}) 和 L(${leonardoIdx - 1})`,
+                            forest: forest.map(h => this.cloneHeap(h)),
+                            sorted: [...sorted],
+                            elementValues: {...this.elementValues}
+                        });
 
-      // compute required height for the tree using fixed level height
-      const requiredHeight = padY*2 + (maxDepth) * levelH + 40; // extra padding
+                        if (maxHeap.leftChild) {
+                            forest.push(this.cloneHeap(maxHeap.leftChild));
+                        }
+                        if (maxHeap.rightChild) {
+                            forest.push(this.cloneHeap(maxHeap.rightChild));
+                        }
+                    }
+                }
 
-      // compute final scale that fits both width and height
-      const scaleX = rect.width / contentWidth;
-      const scaleY = rect.height / requiredHeight;
-      const finalScale = Math.min(1, scaleX, scaleY);
-      currentScale = finalScale;
-
-      // compute offsets to center the content in canvas pixels
-      const offsetX = (rect.width - contentWidth * finalScale) / 2;
-      const offsetY = (rect.height - requiredHeight * finalScale) / 2;
-      currentOffsetX = offsetX; currentTopMargin = offsetY;
-
-      // create target positions for every node (normalized X coords)
-      targetPositions = new Array(n);
-      for (let i=0;i<n;i++){
-        if (!isAlgorithmFinished){
-          // Shift X by nodeRadius + SIDE_PADDING/2 to ensure nodes don't clip at edges
-          const x = (xPositions[i] - minX) + nodeRadius + (SIDE_PADDING / 2);
-          const y = padY + depth[i]*levelH;
-          targetPositions[i] = { x: x, y: y+12 };
-        } else {
-          // finished: linear center line (normalized to logical coords considering offsets/scale)
-          // Use nodeRadius + SIDE_PADDING/2 for consistent spacing with tree layout
-          const linearWidth = usableW - nodeRadius * 2;
-          const x = nodeRadius + (SIDE_PADDING / 2) + (i/(Math.max(1,n-1))) * linearWidth;
-          const y = (rect.height / 2 - currentTopMargin) / Math.max(1,currentScale);
-          targetPositions[i] = { x: x, y: y };
-        }
-      }
-
-      // initialize visual positions to target (if empty)
-      for (let i=0;i<targetPositions.length;i++){
-        if (!visualPositions[i]) visualPositions[i] = { x: targetPositions[i].x, y: targetPositions[i].y };
-      }
-    }
-
-    // animation loop: lerp visualPositions -> targetPositions and draw persistent edges/nodes
-    function animationLoop(){
-      // ensure we have targets
-      drawTreeStructure();
-
-      const rect = treeCanvas.getBoundingClientRect();
-      treeCtx.clearRect(0,0,rect.width,rect.height);
-
-      const n = arr.length;
-
-      // handle finish progression if algorithm finished
-      if (isAlgorithmFinished && finishProgress < 1){
-        finishProgress = Math.min(1, finishProgress + FINISH_SPEED);
-        if (finishProgress === 1){
-          // fully finished: clear persistent parents so edges stop being drawn in subsequent frames
-          persistentParent = new Array(n).fill(null);
-        }
-      }
-
-      // update visuals towards targets
-      for (let i=0;i<n;i++){
-        const t = targetPositions[i] || { x: (i/(Math.max(1,n-1)))*rect.width, y: rect.height - 20 };
-        if (!visualPositions[i]) visualPositions[i] = { x: t.x, y: t.y };
-        visualPositions[i].x += (t.x - visualPositions[i].x) * LERP;
-        visualPositions[i].y += (t.y - visualPositions[i].y) * LERP;
-      }
-
-      // draw edges for all persistent parent links (persistent)
-      treeCtx.lineWidth = 2;
-      const edgeColor = getComputedStyle(document.documentElement).getPropertyValue('--text').trim() || '#e6eef8';
-      // use alpha fading when finishing
-      const edgeAlpha = isAlgorithmFinished ? (1 - finishProgress) : 1;
-
-      // apply scaling/translation to keep tree within canvas
-      treeCtx.save();
-      // scale first so we can translate in logical units properly
-      treeCtx.scale(currentScale, currentScale);
-      // translate in pre-scale logical units so the post-scale content is centered
-      treeCtx.translate(currentOffsetX / Math.max(1,currentScale), currentTopMargin / Math.max(1,currentScale));
-
-      if (edgeAlpha > 0){
-        treeCtx.save();
-        treeCtx.globalAlpha = edgeAlpha;
-        treeCtx.strokeStyle = edgeColor;
-        for (let i=0;i<n;i++){
-          const p = persistentParent[i];
-          if (p != null && visualPositions[i] && visualPositions[p]){
-            const x1 = visualPositions[p].x;
-            const y1 = visualPositions[p].y;
-            const x2 = visualPositions[i].x;
-            const y2 = visualPositions[i].y;
-            treeCtx.beginPath();
-            treeCtx.moveTo(x1,y1);
-            treeCtx.lineTo(x2,y2);
-            treeCtx.stroke();
-          }
-        }
-        treeCtx.restore();
-      }
-
-      // draw nodes using visual positions
-      const nodeRadius = Math.min(20, Math.max(10, ((rect.width) - 48) / Math.max(8,n)));
-      for (let i=0;i<n;i++){
-        const vp = visualPositions[i];
-        if (!vp) continue;
-        // pick color based on bar state
-        const b = barsEl.querySelector(`.bar[data-index='${i}']`);
-        let fill = getComputedStyle(document.documentElement).getPropertyValue('--bar').trim();
-        if (b){
-          if (b.classList.contains('compare')) fill = getComputedStyle(document.documentElement).getPropertyValue('--compare').trim();
-          else if (b.classList.contains('move')) fill = getComputedStyle(document.documentElement).getPropertyValue('--move').trim();
-          else if (b.classList.contains('done')) fill = getComputedStyle(document.documentElement).getPropertyValue('--done').trim();
+                // 重新平衡
+                this.rebalanceRootsSteps(forest, sorted);
+            }
         }
 
-        treeCtx.beginPath();
-        treeCtx.fillStyle = fill;
-        treeCtx.strokeStyle = '#021022';
-        treeCtx.lineWidth = 1;
-        treeCtx.arc(vp.x, vp.y, nodeRadius, 0, Math.PI*2);
-        treeCtx.fill();
-        treeCtx.stroke();
-
-        treeCtx.fillStyle = '#021022';
-        treeCtx.font = `${Math.max(10, nodeRadius-6)}px sans-serif`;
-        treeCtx.textAlign = 'center';
-        treeCtx.textBaseline = 'middle';
-        const displayVal = (visualValues && visualValues.length === arr.length) ? visualValues[i] : arr[i];
-        treeCtx.fillText(String(displayVal), vp.x, vp.y);
-      }
-
-      // restore transform after drawing
-      treeCtx.restore();
-
-      requestAnimationFrame(animationLoop);
-    }
-
-    // globalState to hold current head/p/pshift for visualization
-    const globalState = { head: 0, p: 1 >>> 0, pshift: 1 };
-
-    // ---------- Smoothsort Implementation (port of Java/Wikibooks) ----------
-    const LP = [1,1,3,5,9,15,25,41,67,109,177,287,465,753,1219,1973,3193,5167,8361,13529,21891,35421,57313,92735,150049,242785,392835,635621,1028457,1664079,2692537,4356617,7049155,11405773,18454929,29860703,48315633,78176337,126491971,204668309,331160281,535828591,866988873];
-
-    function ctz(x){
-      // count trailing zeros of 32-bit unsigned
-      if (x === 0) return 32;
-      let c = 0;
-      while ((x & 1) === 0) { x >>>= 1; c++; }
-      return c;
-    }
-
-    async function sift(m, pshift, head) {
-      let val = m[head];
-      while (pshift > 1) {
-        const rt = head - 1;
-        const lf = head - 1 - LP[pshift - 2];
-
-        // compare val with children
-        // We animate comparisons with values at lf and rt
-        await highlightCompare(head, lf);
-        await highlightCompare(head, rt);
-
-        if (val >= m[lf] && val >= m[rt]) break;
-        if (m[lf] >= m[rt]) {
-          // m[head] = m[lf]; head = lf; pshift -=1;
-          await animateAssign(head, lf);
-          head = lf;
-          pshift -= 1;
-        } else {
-          await animateAssign(head, rt);
-          head = rt;
-          pshift -= 2;
-        }
-        // update global state so tree visualization stays in sync
-        globalState.head = head;
-        globalState.pshift = pshift;
-        drawTreeStructure();
-      }
-      // place val into head
-      await placeValue(head, val);
-      globalState.head = head;
-      globalState.pshift = pshift;
-      drawTreeStructure();
-    }
-
-    async function trinkle(m, p, pshift, head, trusty) {
-      let val = m[head];
-      while (p !== 1) {
-        const stepson = head - LP[pshift];
-        // compare stepson with val
-        await highlightCompare(head, stepson);
-        if (m[stepson] <= val) break;
-
-        if (!trusty && pshift > 1) {
-          const rt = head - 1;
-          const lf = head - 1 - LP[pshift - 2];
-          // if either child >= stepson then break
-          await highlightCompare(rt, stepson);
-          await highlightCompare(lf, stepson);
-          if (m[rt] >= m[stepson] || m[lf] >= m[stepson]) break;
+        // ============ 視覺化和繪圖 ============
+        function setupCanvas() {
+            const container = document.getElementById('canvas-section');
+            const rect = container.getBoundingClientRect();
+            const dpr = window.devicePixelRatio || 1;
+            
+            canvas.width = (rect.width - 30) * dpr;
+            canvas.height = 600 * dpr;
+            
+            canvas.style.width = `${rect.width - 30}px`;
+            canvas.style.height = '600px';
+            
+            ctx.scale(dpr, dpr);
         }
 
-        // move stepson up
-        await animateAssign(head, stepson);
-        head = stepson;
-        // update global state to reflect head change
-        globalState.head = head;
-        drawTreeStructure();
+        function drawVisualization(visualizer, stepIndex) {
+            const step = visualizer.steps[stepIndex];
+            if (!step) return;
 
-        const trail = ctz(p & ~1 >>> 0);
-        p >>>= trail;
-        pshift += trail;
-        // update global state to reflect p/pshift change
-        globalState.p = p;
-        globalState.pshift = pshift;
-        drawTreeStructure();
-        trusty = false;
-      }
-      if (!trusty) {
-        await placeValue(head, val);
-        await sift(m, pshift, head);
-      }
-    }
+            const canvasW = canvas.width / (window.devicePixelRatio || 1);
+            const canvasH = canvas.height / (window.devicePixelRatio || 1);
+            
+            ctx.fillStyle = '#1e1e1e';
+            ctx.fillRect(0, 0, canvasW, canvasH);
 
-    async function smoothSortAnimated(m) {
-      const n = m.length;
-      if (n < 2) return;
+            // 繪製陣列層 (底部)
+            drawArrayLayer(step, visualizer, canvasW, canvasH);
 
-      let head = 0;
-      let p = 1 >>> 0;
-      let pshift = 1;
-
-      // initial global state
-      globalState.head = head; globalState.p = p; globalState.pshift = pshift; drawTreeStructure();
-
-      while (head < n) {
-        // keep global state updated for visualization
-        globalState.head = head; globalState.p = p; globalState.pshift = pshift; drawTreeStructure();
-
-        if ((p & 3) === 3) {
-          await sift(m, pshift, head);
-          p >>>= 2;
-          pshift += 2;
-        } else {
-          if (LP[pshift - 1] >= n - head) {
-            await trinkle(m, p, pshift, head, false);
-          } else {
-            await sift(m, pshift, head);
-          }
-
-          if (pshift === 1) { p <<= 1; pshift = 0; }
-          else { p <<= (pshift - 1); pshift = 1; }
+            // 繪製堆森林層 (頂部)
+            drawForestLayer(step, visualizer, canvasW, canvasH);
         }
-        p |= 1;
-        head++;
 
-        // update global state after changes
-        globalState.head = head; globalState.p = p; globalState.pshift = pshift; drawTreeStructure();
-      }
+        function drawArrayLayer(step, visualizer, canvasW, canvasH) {
+            const arrayY = canvasH - 80;
+            const boxWidth = 40;
+            const boxHeight = 30;
+            const startX = (canvasW - visualizer.n * boxWidth) / 2;
 
-      await trinkle(m, p, pshift, head - 1, false);
+            const forest = step.forest || [];
+            const sorted = step.sorted || [];
 
-      while (pshift !== 1 || p !== 1) {
-        if (pshift <= 1) {
-          const trail = ctz(p & ~1 >>> 0);
-          p >>>= trail;
-          pshift += trail;
-        } else {
-          p <<= 2;
-          p ^= 7;
-          pshift -= 2;
+            ctx.fillStyle = '#3c3c3c';
+            ctx.strokeStyle = '#4ec9b0';
+            ctx.lineWidth = 2;
+            ctx.font = '12px monospace';
+            ctx.fillStyle = '#d4d4d4';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
 
-          await trinkle(m, p >>> 1, pshift + 1, head - LP[pshift] - 1, true);
-          await trinkle(m, p, pshift, head - 1, true);
+            for (let i = 0; i < visualizer.n; i++) {
+                const x = startX + i * boxWidth;
+                const y = arrayY;
+                const value = visualizer.elementValues[i];
+
+                // 確定顏色
+                let isInForest = false;
+                for (const heap of forest) {
+                    if (isElementInHeap(i, heap)) {
+                        isInForest = true;
+                        break;
+                    }
+                }
+
+                let isSorted = sorted.includes(i);
+
+                if (isSorted) {
+                    ctx.fillStyle = '#6a9955';
+                } else if (isInForest) {
+                    ctx.fillStyle = '#569cd6';
+                } else {
+                    ctx.fillStyle = '#3c3c3c';
+                }
+
+                ctx.fillRect(x, y, boxWidth, boxHeight);
+                ctx.strokeStyle = '#4ec9b0';
+                ctx.strokeRect(x, y, boxWidth, boxHeight);
+
+                ctx.fillStyle = '#d4d4d4';
+                ctx.font = 'bold 12px monospace';
+                ctx.fillText(value, x + boxWidth / 2, y + boxHeight / 2);
+                
+                ctx.fillStyle = '#858585';
+                ctx.font = '10px monospace';
+                ctx.fillText(`[${i}]`, x + boxWidth / 2, y + boxHeight + 15);
+            }
         }
-        head--;
-        globalState.head = head; globalState.p = p; globalState.pshift = pshift; drawTreeStructure();
-      }
-    }
 
-    // ---------- UI / Wiring ----------
-    btnStart.addEventListener('click', async ()=>{
-      const raw = input.value.trim();
-      if (!raw) return alert('請輸入數字');
-      const parts = raw.split(/\s+/).map(x=>Number(x)).filter(x=>!Number.isNaN(x));
-      if (!parts.length) return alert('找不到有效數字');
-      arr = parts.slice(); original = parts.slice(); visualValues = arr.slice();
-      // reset visualization global state
-      globalState.head = 0; globalState.p = 1 >>> 0; globalState.pshift = 1; drawTreeStructure();
-      // reset persistent/final flags
-      isAlgorithmFinished = false; finishProgress = 0; persistentParent = [];
-      renderBars();
-      // disable UI
-      btnStart.disabled = true; input.disabled = true; delayRange.disabled = true; btnReset.disabled = true;
+        function isElementInHeap(elementIndex, heap) {
+            if (!heap) return false;
+            if (heap.root === elementIndex) return true;
+            if (heap.leftChild && isElementInHeap(elementIndex, heap.leftChild)) return true;
+            if (heap.rightChild && isElementInHeap(elementIndex, heap.rightChild)) return true;
+            return false;
+        }
 
-      try {
-        await smoothSortAnimated(arr);
-        // mark final
-        markAllDone();
-        // begin finish animation: fade edges and move nodes to linear
-        isAlgorithmFinished = true; finishProgress = 0;
-      } catch (err) {
-        console.error(err);
-        alert('排序過程發生錯誤，請看 console 訊息。');
-      }
+        function drawForestLayer(step, visualizer, canvasW, canvasH) {
+            const forest = step.forest || [];
+            const forestY = 100;
+            const heapSpacing = canvasW / (Math.max(forest.length, 1) + 1);
 
-      btnStart.disabled = false; input.disabled = false; delayRange.disabled = false; btnReset.disabled = false;
-    });
+            for (let i = 0; i < forest.length; i++) {
+                const heap = forest[i];
+                const heapCenterX = heapSpacing * (i + 1);
+                
+                // 畫堆
+                drawHeapTree(heap, heapCenterX, forestY, visualizer, canvasW, canvasH);
+            }
+        }
 
-    btnReset.addEventListener('click', ()=>{
-      arr = original.slice(); visualValues = arr.slice();
-      globalState.head = 0; globalState.p = 1 >>> 0; globalState.pshift = 1;
-      // reset persistent/final flags and visual positions for fresh start
-      isAlgorithmFinished = false; finishProgress = 0; persistentParent = []; targetPositions = []; visualPositions = [];
-      renderBars();
-    });
+        function drawHeapTree(heap, centerX, topY, visualizer, canvasW, canvasH) {
+            const getTreeWidth = (h, depth = 0) => {
+                if (!h || depth > 10) return 40;
+                const leftWidth = h.leftChild ? getTreeWidth(h.leftChild, depth + 1) : 0;
+                const rightWidth = h.rightChild ? getTreeWidth(h.rightChild, depth + 1) : 0;
+                return Math.max(80, leftWidth + rightWidth + 40);
+            };
 
-    // allow pressing Enter to start
-    input.addEventListener('keydown', (e)=>{ if (e.key === 'Enter') btnStart.click(); });
+            const width = getTreeWidth(heap);
+            drawNode(heap, centerX, topY, width / 2, visualizer, canvasW, canvasH);
+        }
 
-    // initial demo
-    input.value = '3 1 4 5 2 10 9 8 7';
-    arr = input.value.split(/\s+/).map(x=>Number(x)); visualValues = arr.slice();
-    globalState.head = 0; globalState.p = 1 >>> 0; globalState.pshift = 1; isAlgorithmFinished = false; finishProgress = 0; persistentParent = [];
-    renderBars();
+        function drawNode(heap, x, y, maxWidth, visualizer, canvasW, canvasH, depth = 0) {
+            if (!heap || depth > 15) return;
 
-  </script>
+            const radius = 20;
+            const value = visualizer.elementValues[heap.root];
+
+            // 繪製邊
+            if (heap.leftChild) {
+                const leftX = x - maxWidth / 2;
+                const leftY = y + 70;
+                ctx.strokeStyle = 'rgba(212, 212, 212, 0.4)';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(leftX, leftY);
+                ctx.stroke();
+                drawNode(heap.leftChild, leftX, leftY, maxWidth / 2.5, visualizer, canvasW, canvasH, depth + 1);
+            }
+
+            if (heap.rightChild) {
+                const rightX = x + maxWidth / 2;
+                const rightY = y + 70;
+                ctx.strokeStyle = 'rgba(212, 212, 212, 0.4)';
+                ctx.lineWidth = 1.5;
+                ctx.beginPath();
+                ctx.moveTo(x, y);
+                ctx.lineTo(rightX, rightY);
+                ctx.stroke();
+                drawNode(heap.rightChild, rightX, rightY, maxWidth / 2.5, visualizer, canvasW, canvasH, depth + 1);
+            }
+
+            // 繪製節點圓圈
+            ctx.fillStyle = '#569cd6';
+            ctx.strokeStyle = '#4ec9b0';
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.arc(x, y, radius, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.stroke();
+
+            // 繪製數值
+            ctx.fillStyle = '#1e1e1e';
+            ctx.font = 'bold 14px monospace';
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(value, x, y);
+
+            // 繪製大小標記
+            ctx.fillStyle = '#858585';
+            ctx.font = '10px monospace';
+            const leonardoIdx = heap.leonardoIndex || 0;
+            ctx.fillText(`L(${leonardoIdx})`, x, y + 35);
+        }
+
+        // ============ 狀態更新 ============
+        function updatePanelInfo(visualizer, stepData) {
+            // 更新狀態說明
+            stateText.textContent = stepData.message || '執行中...';
+
+            // 更新堆森林結構
+            const forest = stepData.forest || [];
+            let heapHTML = '';
+            for (let i = 0; i < forest.length; i++) {
+                const heap = forest[i];
+                const root = visualizer.elementValues[heap.root];
+                heapHTML += `<div class="heap-info">堆 #${i + 1}: L(${heap.leonardoIndex}) [大小: ${heap.size}] 根: ${root}</div>`;
+            }
+            if (heapHTML === '') heapHTML = '<div class="heap-info">森林為空</div>';
+            heapStructure.innerHTML = heapHTML;
+
+            // 更新統計資訊
+            const sorted = stepData.sorted || [];
+            const processed = sorted.length;
+            const total = visualizer.n;
+            stats.innerHTML = `已排序: ${processed} / ${total} | 當前步驟: ${currentStep + 1}`;
+
+            // 更新步驟計數器
+            stepCounter.textContent = `步驟: ${currentStep + 1} / ${totalSteps}`;
+        }
+
+        // ============ 主控制邏輯 ============
+        function startSort() {
+            if (isSorting) return;
+
+            const inputText = numberInput.value.trim();
+            if (!inputText) {
+                alert('請輸入數字！');
+                return;
+            }
+
+            const numbers = inputText.split(/\s+/).map(Number).filter(n => !isNaN(n));
+            if (numbers.length === 0) {
+                alert('請輸入有效的數字！');
+                return;
+            }
+
+            isSorting = true;
+            isAutoPlaying = false;
+            currentStep = 0;
+
+            const visualizer = new SmoothSortVisualizer(numbers);
+            totalSteps = visualizer.steps.length;
+
+            setupCanvas();
+            updatePanelInfo(visualizer, visualizer.steps[0]);
+            drawVisualization(visualizer, 0);
+
+            // 啟用下一步按鈕
+            prevStepBtn.disabled = currentStep === 0;
+            nextStepBtn.disabled = false;
+
+            // 存儲以供使用
+            window.currentVisualizer = visualizer;
+        }
+
+        function goToStep(stepIndex) {
+            if (!window.currentVisualizer) return;
+            if (stepIndex < 0 || stepIndex >= totalSteps) return;
+
+            currentStep = stepIndex;
+            const step = window.currentVisualizer.steps[currentStep];
+            
+            updatePanelInfo(window.currentVisualizer, step);
+            drawVisualization(window.currentVisualizer, currentStep);
+
+            prevStepBtn.disabled = currentStep === 0;
+            nextStepBtn.disabled = currentStep === totalSteps - 1;
+        }
+
+        function nextStep() {
+            if (currentStep < totalSteps - 1) {
+                goToStep(currentStep + 1);
+            }
+        }
+
+        function prevStep() {
+            if (currentStep > 0) {
+                goToStep(currentStep - 1);
+            }
+        }
+
+        async function autoPlay() {
+            if (isAutoPlaying) {
+                isAutoPlaying = false;
+                autoPlayButton.textContent = '自動播放';
+                return;
+            }
+
+            isAutoPlaying = true;
+            autoPlayButton.textContent = '暫停';
+            autoPlayButton.disabled = true;
+            startButton.disabled = true;
+            prevStepBtn.disabled = true;
+            nextStepBtn.disabled = true;
+
+            while (currentStep < totalSteps - 1 && isAutoPlaying) {
+                nextStep();
+                await new Promise(resolve => setTimeout(resolve, animationSpeed));
+            }
+
+            isAutoPlaying = false;
+            autoPlayButton.textContent = '自動播放';
+            autoPlayButton.disabled = false;
+            startButton.disabled = false;
+            prevStepBtn.disabled = currentStep === 0;
+            nextStepBtn.disabled = currentStep === totalSteps - 1;
+        }
+
+        // ============ 事件監聽 ============
+        startButton.addEventListener('click', startSort);
+        nextStepBtn.addEventListener('click', nextStep);
+        prevStepBtn.addEventListener('click', prevStep);
+        autoPlayButton.addEventListener('click', autoPlay);
+
+        speedSlider.addEventListener('input', (e) => {
+            animationSpeed = parseInt(e.target.value, 10);
+            speedValue.textContent = `${animationSpeed}ms`;
+        });
+
+        window.addEventListener('resize', () => {
+            if (window.currentVisualizer && !isSorting) {
+                setupCanvas();
+                drawVisualization(window.currentVisualizer, currentStep);
+            }
+        });
+
+        // 初始化
+        numberInput.value = "7 2 8 1 4 9";
+        setupCanvas();
+        prevStepBtn.disabled = true;
+        nextStepBtn.disabled = true;
+    </script>
 </body>
 </html>
