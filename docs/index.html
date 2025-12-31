@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smooth Sort 演算法視覺化</title>
+    <title>Heap Sort 演算法視覺化</title>
     <style>
         * {
             margin: 0;
@@ -192,8 +192,8 @@
 </head>
 <body>
     <div class="container">
-        <h1>🌳 Smooth Sort 視覺化</h1>
-        <p class="subtitle">完整的 Leonardo 堆森林樹形結構可視化</p>
+        <h1>🌳 Heap Sort 視覺化</h1>
+        <p class="subtitle">完整的堆排序樹形結構可視化</p>
 
         <div class="control-panel">
             <div class="control-group">
@@ -231,14 +231,14 @@
                 </div>
 
                 <div class="info-section">
-                    <div class="info-title">🏔️ Leonardo 堆</div>
+                    <div class="info-title">📦 堆陣列</div>
                     <div id="heapInfo"></div>
                 </div>
 
                 <div class="info-section">
                     <div class="info-title">📈 統計</div>
                     <div class="info-content" id="statsInfo">
-                        <div>堆數: 0</div>
+                        <div>元素數: 0</div>
                         <div>已排序: 0/0</div>
                     </div>
                 </div>
@@ -258,10 +258,6 @@
     </div>
 
     <script>
-        // ===== Leonardo 數列 =====
-        const LEONARDO = [1, 1, 3, 5, 9, 15, 25, 41, 67, 109, 177, 287, 465, 753, 1219, 1973, 3193, 5167, 8361, 13529, 21891, 35421, 57313, 92735, 150049, 242785, 392835, 635621, 1028457, 1664079, 2692537, 4356617, 7049155, 11405773, 18454929, 29860703, 48315633, 78176337, 126491971, 204668309, 331160281, 535828591, 866988873];
-
-        // ===== 配置 =====
         const canvas = document.getElementById('canvas');
         const ctx = canvas.getContext('2d');
         let animationSpeed = 800;
@@ -270,180 +266,175 @@
         let isAutoPlaying = false;
         let algorithm = null;
 
-        // ===== 樹節點定義 =====
-        class TreeNode {
-            constructor(value, leonardoIdx) {
+        // ===== 堆節點定義 =====
+        class HeapNode {
+            constructor(value, index) {
                 this.value = value;
-                this.leonardoIdx = leonardoIdx;
+                this.index = index;
                 this.left = null;
                 this.right = null;
             }
 
-            getSize() {
-                return LEONARDO[this.leonardoIdx];
+            getNodeCount() {
+                let count = 1;
+                if (this.left) count += this.left.getNodeCount();
+                if (this.right) count += this.right.getNodeCount();
+                return count;
             }
         }
 
-        // ===== Smooth Sort 演算法 =====
-        class SmoothSortAlgorithm {
+        // ===== 正確的堆排序演算法 =====
+        class HeapSort {
             constructor(array) {
-                this.originalArray = [...array];
+                this.array = [...array];
                 this.n = array.length;
-                this.heap = [];
+                this.heapArray = [];
                 this.sorted = [];
                 this.steps = [];
-                this.indices = array.map((_, i) => i);
+                
                 this.run();
             }
 
             run() {
-                this.recordStep('初始化', '開始建構 Leonardo 堆森林');
+                this.recordStep('初始化', `開始排序 ${this.n} 個元素`);
 
-                // 建構階段：sift down
+                // 建構階段：建立最小堆
                 for (let i = 0; i < this.n; i++) {
-                    this.siftDown(i);
+                    this.heapArray.push(this.array[i]);
+                    this._bubbleUp(i);
+                    this.recordStep('建構', `添加元素 ${this.array[i]}`);
                 }
 
-                this.recordStep('排序開始', '開始排序階段');
-
-                // 排序階段：提取最小值
-                while (this.heap.length > 0) {
-                    const minIdx = this.findMinInHeap();
-                    const minNode = this.heap[minIdx];
-                    this.sorted.push(minNode.value);
-                    this.heap.splice(minIdx, 1);
-                    this.recordStep('提取', `提取最小值: ${minNode.value}`);
+                // 排序階段：重複提取最小值
+                while (this.heapArray.length > 0) {
+                    this.extractMin();
                 }
 
                 this.recordStep('完成', `排序完成！結果: [${this.sorted.join(', ')}]`);
             }
 
-            siftDown(index) {
-                const value = this.originalArray[index];
-
-                // 決定新節點的 Leonardo 指數
-                let newNode = new TreeNode(value, 0);
-
-                if (this.heap.length === 0) {
-                    newNode.leonardoIdx = 1;
-                    this.heap.push(newNode);
-                    this.recordStep('建構', `添加第一個元素: ${value}`);
-                    return;
-                }
-
-                // 嘗試合併策略
-                this.tryMerge(newNode);
-            }
-
-            tryMerge(newNode) {
-                while (this.heap.length >= 1) {
-                    const lastHeap = this.heap[this.heap.length - 1];
-
-                    // 嘗試與最後的堆合併
-                    if (newNode.leonardoIdx === lastHeap.leonardoIdx) {
-                        // 兩個相同大小的 Leonardo 堆
-                        const merged = new TreeNode(
-                            Math.min(newNode.value, lastHeap.value),
-                            newNode.leonardoIdx + 1
-                        );
-                        merged.left = lastHeap;
-                        merged.right = newNode;
-                        this.heap.pop();
-                        newNode = merged;
-                    } else if (newNode.leonardoIdx === 0 && lastHeap.leonardoIdx === 1) {
-                        // L(0) + L(1) = L(2)
-                        const merged = new TreeNode(
-                            Math.min(newNode.value, lastHeap.value),
-                            2
-                        );
-                        merged.left = lastHeap;
-                        merged.right = newNode;
-                        this.heap.pop();
-                        newNode = merged;
+            _bubbleUp(index) {
+                while (index > 0) {
+                    const parentIdx = Math.floor((index - 1) / 2);
+                    if (this.heapArray[index] < this.heapArray[parentIdx]) {
+                        [this.heapArray[index], this.heapArray[parentIdx]] = 
+                        [this.heapArray[parentIdx], this.heapArray[index]];
+                        index = parentIdx;
                     } else {
                         break;
                     }
                 }
-
-                this.heap.push(newNode);
-                this.recordStep('建構', `添加節點`);
             }
 
-            findMinInHeap() {
-                let minIdx = 0;
-                let minVal = this.heap[0].value;
+            _bubbleDown(index) {
+                while (true) {
+                    let smallest = index;
+                    const left = 2 * index + 1;
+                    const right = 2 * index + 2;
 
-                for (let i = 1; i < this.heap.length; i++) {
-                    if (this.heap[i].value < minVal) {
-                        minVal = this.heap[i].value;
-                        minIdx = i;
+                    if (left < this.heapArray.length && this.heapArray[left] < this.heapArray[smallest]) {
+                        smallest = left;
+                    }
+                    if (right < this.heapArray.length && this.heapArray[right] < this.heapArray[smallest]) {
+                        smallest = right;
+                    }
+
+                    if (smallest !== index) {
+                        [this.heapArray[index], this.heapArray[smallest]] = 
+                        [this.heapArray[smallest], this.heapArray[index]];
+                        index = smallest;
+                    } else {
+                        break;
                     }
                 }
+            }
 
-                return minIdx;
+            extractMin() {
+                if (this.heapArray.length === 0) return;
+
+                const min = this.heapArray[0];
+                this.sorted.push(min);
+
+                this.heapArray[0] = this.heapArray[this.heapArray.length - 1];
+                this.heapArray.pop();
+
+                if (this.heapArray.length > 0) {
+                    this._bubbleDown(0);
+                }
+
+                this.recordStep('提取', `提取最小值: ${min}`);
             }
 
             recordStep(phase, message) {
+                const heapTree = this._buildTreeFromArray();
                 const step = {
                     phase: phase,
                     message: message,
-                    heap: this.heap.map(node => this.cloneNode(node)),
+                    heapArray: [...this.heapArray],
+                    heapTree: heapTree,
                     sorted: [...this.sorted]
                 };
                 this.steps.push(step);
             }
 
-            cloneNode(node) {
-                if (!node) return null;
-                const clone = new TreeNode(node.value, node.leonardoIdx);
-                clone.left = this.cloneNode(node.left);
-                clone.right = this.cloneNode(node.right);
-                return clone;
+            _buildTreeFromArray() {
+                if (this.heapArray.length === 0) return null;
+
+                const nodes = new Map();
+                for (let i = 0; i < this.heapArray.length; i++) {
+                    nodes.set(i, new HeapNode(this.heapArray[i], i));
+                }
+
+                for (let i = 0; i < this.heapArray.length; i++) {
+                    const node = nodes.get(i);
+                    const left = 2 * i + 1;
+                    const right = 2 * i + 2;
+
+                    if (left < this.heapArray.length) {
+                        node.left = nodes.get(left);
+                    }
+                    if (right < this.heapArray.length) {
+                        node.right = nodes.get(right);
+                    }
+                }
+
+                return nodes.get(0);
             }
         }
 
-        // ===== 視覺化函數 =====
+        // ===== 視覺化 =====
         function drawVisualization(step) {
             const w = canvas.width;
             const h = canvas.height;
 
-            // 清空畫布
             ctx.fillStyle = '#0f0f1e';
             ctx.fillRect(0, 0, w, h);
 
-            if (!step.heap || step.heap.length === 0) {
+            if (!step.heapTree) {
                 ctx.fillStyle = '#666';
                 ctx.font = '18px Arial';
                 ctx.textAlign = 'center';
                 ctx.fillText(step.message, w / 2, h / 2);
             } else {
-                // 繪製 Leonardo 堆森林
-                const padding = 40;
-                const heapWidth = (w - 2 * padding) / step.heap.length;
+                // 繪製堆樹
+                const maxDepth = getTreeDepth(step.heapTree);
+                const verticalSpacing = (h - 120) / Math.max(maxDepth, 2);
+                drawTree(step.heapTree, w / 2, 50, w * 0.35, verticalSpacing);
 
-                step.heap.forEach((heap, idx) => {
-                    const centerX = padding + idx * heapWidth + heapWidth / 2;
-                    const topY = 50;
-
-                    // 標題
-                    ctx.fillStyle = '#00d4ff';
-                    ctx.font = 'bold 14px Arial';
-                    ctx.textAlign = 'center';
-                    ctx.fillText(`L(${heap.leonardoIdx})`, centerX, topY - 30);
-
-                    // 繪製樹
-                    const maxDepth = getTreeDepth(heap);
-                    const verticalSpacing = (h - 150) / Math.max(maxDepth, 2);
-                    drawTree(heap, centerX, topY, heapWidth * 0.7, verticalSpacing);
-                });
-
-                // 繪製已排序數列
+                // 繪製已排序結果
                 if (step.sorted.length > 0) {
-                    drawSortedArray(step.sorted, h - 50);
+                    ctx.fillStyle = '#00d4ff';
+                    ctx.font = '12px Arial';
+                    ctx.textAlign = 'left';
+                    ctx.fillText('已排序: ', 40, h - 30);
+
+                    const text = '[' + step.sorted.join(', ') + ']';
+                    ctx.fillStyle = '#99ff99';
+                    ctx.font = 'bold 12px Arial';
+                    ctx.fillText(text, 130, h - 30);
                 }
             }
 
-            // 更新信息面板
             updateInfo(step);
         }
 
@@ -452,9 +443,8 @@
 
             const nodeRadius = 22;
 
-            // 繪製子節點連線
             if (node.left) {
-                const leftX = x - width / 3;
+                const leftX = x - width / 2;
                 ctx.strokeStyle = 'rgba(0, 212, 255, 0.6)';
                 ctx.lineWidth = 2;
                 ctx.beginPath();
@@ -465,7 +455,7 @@
             }
 
             if (node.right) {
-                const rightX = x + width / 3;
+                const rightX = x + width / 2;
                 ctx.strokeStyle = 'rgba(0, 212, 255, 0.6)';
                 ctx.lineWidth = 2;
                 ctx.beginPath();
@@ -475,7 +465,6 @@
                 drawTree(node.right, rightX, y + verticalSpacing, width / 2.5, verticalSpacing);
             }
 
-            // 繪製節點圓形
             ctx.fillStyle = 'rgba(0, 212, 255, 0.15)';
             ctx.strokeStyle = '#00d4ff';
             ctx.lineWidth = 2.5;
@@ -484,7 +473,6 @@
             ctx.fill();
             ctx.stroke();
 
-            // 繪製節點數值
             ctx.fillStyle = '#fff';
             ctx.font = 'bold 16px Arial';
             ctx.textAlign = 'center';
@@ -492,49 +480,30 @@
             ctx.fillText(node.value, x, y);
         }
 
-        function drawSortedArray(sorted, y) {
-            ctx.fillStyle = '#00d4ff';
-            ctx.font = '13px Arial';
-            ctx.textAlign = 'left';
-            ctx.fillText('已排序: ', 40, y);
-
-            const text = '[' + sorted.join(', ') + ']';
-            ctx.fillStyle = '#99ff99';
-            ctx.font = 'bold 13px Arial';
-            ctx.fillText(text, 130, y);
-        }
-
         function getTreeDepth(node, depth = 1) {
             if (!node) return depth;
-            return Math.max(getTreeDepth(node.left, depth + 1), getTreeDepth(node.right, depth + 1));
+            return Math.max(
+                getTreeDepth(node.left, depth + 1),
+                getTreeDepth(node.right, depth + 1)
+            );
         }
 
         function updateInfo(step) {
-            // 更新狀態
             document.getElementById('statusInfo').innerHTML = `
                 <div><strong>階段:</strong> ${step.phase}</div>
                 <div><strong>信息:</strong> ${step.message}</div>
             `;
 
-            // 更新堆森林信息
-            let heapHtml = '';
-            if (step.heap.length === 0) {
-                heapHtml = '<div style="color: #888;">無</div>';
-            } else {
-                step.heap.forEach((heap, idx) => {
-                    const size = heap.getSize();
-                    heapHtml += `<div class="heap-item">堆 ${idx + 1}: L(${heap.leonardoIdx}) • 節點: ${size}</div>`;
-                });
-            }
-            document.getElementById('heapInfo').innerHTML = heapHtml;
+            const heapText = step.heapArray.length === 0 
+                ? '<div style="color: #888;">空</div>'
+                : `<div class="heap-item">[${step.heapArray.join(', ')}]</div>`;
+            document.getElementById('heapInfo').innerHTML = heapText;
 
-            // 更新統計
             document.getElementById('statsInfo').innerHTML = `
-                <div>堆數: ${step.heap.length}</div>
+                <div>堆大小: ${step.heapArray.length}</div>
                 <div>已排序: ${step.sorted.length}/${algorithm.n}</div>
             `;
 
-            // 更新已排序數列
             if (step.sorted.length === 0) {
                 document.getElementById('sortedInfo').innerHTML = '<div style="color: #888;">等待...</div>';
             } else {
@@ -543,41 +512,41 @@
                 document.getElementById('sortedInfo').innerHTML = `<div style="color: ${color}; font-weight: bold;">${sortedText}</div>`;
             }
 
-            // 更新步驟計數
             document.getElementById('stepInfo').textContent = `步驟: ${currentStep + 1}/${totalSteps}`;
         }
 
         // ===== 用戶交互 =====
         function startSort() {
-            try {
-                const input = document.getElementById('inputArray').value.trim();
-                if (!input) {
-                    alert('請輸入數列');
-                    return;
-                }
-
-                const array = input.split(/\s+/).map(x => parseFloat(x));
-                if (array.some(isNaN)) {
-                    alert('輸入包含非數字');
-                    return;
-                }
-
-                isAutoPlaying = false;
-                currentStep = 0;
-
-                algorithm = new SmoothSortAlgorithm(array);
-                totalSteps = algorithm.steps.length;
-
-                resizeCanvas();
-                showStep(0);
-
-                document.getElementById('startBtn').disabled = true;
-                document.getElementById('autoPlayBtn').disabled = false;
-                updateStepButtons();
-            } catch (error) {
-                alert('錯誤: ' + error.message);
-                console.error(error);
+            const input = document.getElementById('inputArray').value.trim();
+            if (!input) {
+                alert('請輸入數列');
+                return;
             }
+
+            const array = input.split(/\s+/).map(x => parseFloat(x));
+            if (array.some(isNaN)) {
+                alert('輸入包含非數字');
+                return;
+            }
+
+            isAutoPlaying = false;
+            currentStep = 0;
+
+            algorithm = new HeapSort(array);
+            totalSteps = algorithm.steps.length;
+
+            console.log('=== 演算法驗證 ===');
+            console.log('輸入:', array);
+            console.log('輸出:', algorithm.sorted);
+            console.log('預期:', [...array].sort((a, b) => a - b));
+            console.log('正確:', JSON.stringify(algorithm.sorted) === JSON.stringify([...array].sort((a, b) => a - b)));
+
+            resizeCanvas();
+            showStep(0);
+
+            document.getElementById('startBtn').disabled = true;
+            document.getElementById('autoPlayBtn').disabled = false;
+            updateStepButtons();
         }
 
         function showStep(index) {
@@ -609,9 +578,7 @@
 
         function toggleAutoPlay() {
             if (!algorithm) return;
-
             isAutoPlaying = !isAutoPlaying;
-
             if (isAutoPlaying) {
                 document.getElementById('autoPlayBtn').textContent = '⏸ 暫停';
                 autoPlayLoop();
@@ -625,7 +592,6 @@
                 nextStep();
                 await new Promise(resolve => setTimeout(resolve, animationSpeed));
             }
-
             if (isAutoPlaying) {
                 isAutoPlaying = false;
                 document.getElementById('autoPlayBtn').textContent = '自動播放';
@@ -643,7 +609,6 @@
             canvas.height = 600;
         }
 
-        // ===== 初始化 =====
         window.addEventListener('resize', () => {
             if (algorithm) {
                 resizeCanvas();
