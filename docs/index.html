@@ -76,128 +76,117 @@
         .slider-container {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin-left: auto;
+            gap: 8px;
         }
         .slider-container label {
-            white-space: nowrap;
-            font-size: 13px;
+            color: #d4d4d4;
+            font-size: 12px;
         }
         #speed-slider {
+            width: 100px;
+            height: 4px;
             cursor: pointer;
-            width: 120px;
         }
         #speed-value {
-            font-size: 13px;
-            min-width: 45px;
+            font-size: 12px;
+            color: #4ec9b0;
+            min-width: 40px;
         }
         .main-container {
-            width: 100%;
-            max-width: 1400px;
             display: flex;
             gap: 20px;
-            flex-wrap: wrap;
-            justify-content: center;
+            width: 100%;
+            max-width: 1400px;
+            margin-bottom: 20px;
         }
         #canvas-section {
             flex: 1;
-            min-width: 500px;
-            background-color: #252526;
-            border: 1px solid #3c3c3c;
-            border-radius: 8px;
-            padding: 15px;
-        }
-        canvas {
             background-color: #1e1e1e;
             border: 1px solid #3c3c3c;
+            border-radius: 8px;
+            padding: 15px;
+            min-width: 600px;
+        }
+        canvas {
+            border: 1px solid #3c3c3c;
             border-radius: 4px;
-            width: 100%;
-            height: auto;
+            background-color: #252526;
             display: block;
+            width: 100%;
         }
         #info-panel {
-            width: 320px;
-            background-color: #252526;
+            width: 350px;
+            background-color: #1e1e1e;
             border: 1px solid #3c3c3c;
             border-radius: 8px;
             padding: 15px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            max-height: 700px;
             overflow-y: auto;
+            max-height: 650px;
         }
         .panel-section {
+            margin-bottom: 20px;
             border-bottom: 1px solid #3c3c3c;
-            padding-bottom: 12px;
+            padding-bottom: 15px;
         }
         .panel-section:last-child {
             border-bottom: none;
         }
         .section-title {
-            font-size: 12px;
-            font-weight: 600;
+            font-weight: bold;
             color: #4ec9b0;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
             margin-bottom: 8px;
+            font-size: 12px;
+            text-transform: uppercase;
         }
         .state-description {
-            font-size: 13px;
-            line-height: 1.5;
+            font-size: 12px;
+            line-height: 1.6;
             color: #d4d4d4;
         }
         .heap-info {
-            font-size: 12px;
-            font-family: 'Courier New', monospace;
-            background-color: #1e1e1e;
+            font-size: 11px;
+            background-color: #252526;
             padding: 8px;
             border-radius: 4px;
-            margin: 4px 0;
+            border-left: 2px solid #4ec9b0;
+            margin: 5px 0;
             color: #9cdcfe;
+            word-break: break-word;
         }
         .legend {
-            font-size: 11px;
             display: flex;
             flex-direction: column;
-            gap: 6px;
+            gap: 5px;
         }
         .legend-item {
             display: flex;
             align-items: center;
             gap: 8px;
+            font-size: 11px;
         }
         .legend-color {
-            width: 16px;
-            height: 16px;
-            border-radius: 50%;
-            border: 1px solid #4ec9b0;
+            width: 12px;
+            height: 12px;
+            border-radius: 2px;
         }
-        .legend-item.blue .legend-color {
-            background-color: #569cd6;
-        }
-        .legend-item.gold .legend-color {
-            background-color: #dcdcaa;
-        }
-        .legend-item.red .legend-color {
-            background-color: #d16969;
-        }
-        .legend-item.green .legend-color {
-            background-color: #6a9955;
-        }
+        .legend-item.blue .legend-color { background-color: #9cdcfe; }
+        .legend-item.gold .legend-color { background-color: #dcdcaa; }
+        .legend-item.red .legend-color { background-color: #f48771; }
+        .legend-item.green .legend-color { background-color: #6a9955; }
         .button-group {
             display: flex;
-            gap: 10px;
+            gap: 5px;
+            margin: 10px 0;
         }
         #prev-step, #next-step {
             flex: 1;
             padding: 8px 12px;
-            border: none;
+            border: 1px solid #3c3c3c;
             background-color: #0e639c;
             color: white;
             border-radius: 4px;
             cursor: pointer;
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 500;
             transition: background-color 0.3s;
         }
@@ -211,9 +200,9 @@
         }
         .step-counter {
             text-align: center;
-            font-size: 12px;
-            color: #9cdcfe;
-            font-weight: 500;
+            font-size: 11px;
+            color: #858585;
+            margin: 5px 0;
         }
     </style>
 </head>
@@ -226,8 +215,8 @@
         <button id="start-button">開始排序</button>
         <button id="auto-play-button">自動播放</button>
         <div class="slider-container">
-            <label for="speed-slider">速度:</label>
-            <input type="range" id="speed-slider" min="50" max="1500" value="600">
+            <label>速度:</label>
+            <input type="range" id="speed-slider" min="100" max="1000" value="600">
             <span id="speed-value">600ms</span>
         </div>
     </div>
@@ -238,35 +227,34 @@
         </div>
         <div id="info-panel">
             <div class="panel-section">
-                <div class="section-title">⚙️ 當前狀態</div>
+                <div class="section-title">📊 當前狀態</div>
                 <div class="state-description" id="state-text">準備就緒</div>
             </div>
             <div class="panel-section">
                 <div class="section-title">🏔️ 堆森林結構</div>
                 <div id="heap-structure"></div>
-            </div>
-            <div class="panel-section">
-                <div class="section-title">📊 統計</div>
-                <div class="heap-info" id="stats">已讀取: 0 / 步驟: 0</div>
+                <div id="stats" style="font-size: 11px; color: #858585; margin-top: 10px;"></div>
             </div>
             <div class="panel-section">
                 <div class="section-title">✅ 已排序數列</div>
-                <div class="heap-info" id="sorted-array" style="background-color: #1e3a3a; color: #6a9955;">等待排序...</div>
+                <div id="sorted-array" style="background-color: #1e3a3a; color: #6a9955; padding: 8px; border-radius: 4px; font-weight: bold;">等待排序...</div>
             </div>
             <div class="panel-section">
-                <div class="section-title">🎨 圖例</div>
+                <div class="section-title">📍 圖例</div>
                 <div class="legend">
-                    <div class="legend-item blue"><div class="legend-color"></div> <span>合併中的子堆</span></div>
-                    <div class="legend-item gold"><div class="legend-color"></div> <span>新增的根節點</span></div>
-                    <div class="legend-item red"><div class="legend-color"></div> <span>根節點比較</span></div>
-                    <div class="legend-item green"><div class="legend-color"></div> <span>已排序</span></div>
+                    <div class="legend-item blue"><div class="legend-color"></div>待排序元素</div>
+                    <div class="legend-item gold"><div class="legend-color"></div>堆根節點</div>
+                    <div class="legend-item green"><div class="legend-color"></div>已排序</div>
+                    <div class="legend-item red"><div class="legend-color"></div>當前操作</div>
                 </div>
             </div>
             <div class="panel-section">
-                <div class="step-counter" id="step-counter">步驟: 0/0</div>
                 <div class="button-group">
                     <button id="prev-step">⬅️ 上一步</button>
                     <button id="next-step">下一步 ➡️</button>
+                </div>
+                <div class="step-counter">
+                    <span id="step-counter">步驟: 0 / 0</span>
                 </div>
             </div>
         </div>
@@ -290,6 +278,7 @@
         const stepCounter = document.getElementById('step-counter');
         const prevStepBtn = document.getElementById('prev-step');
         const nextStepBtn = document.getElementById('next-step');
+        const sortedArrayDisplay = document.getElementById('sorted-array');
 
         let animationSpeed = 600;
         let isSorting = false;
@@ -297,258 +286,123 @@
         let totalSteps = 0;
         let isAutoPlaying = false;
         let animationFrameId = null;
+        let originalArray = [];
 
-        // ============ 資料結構 ============
-        class SmoothSortVisualizer {
+        // ============ 正確的 Smooth Sort 實現 ============
+        class SmoothSortAlgorithm {
             constructor(array) {
-                this.originalArray = [...array];
+                this.array = [...array];
                 this.n = array.length;
                 this.steps = [];
-                this.elementValues = {};
+                this.heap_sizes = [];
+                this.sorted_indices = [];
+                this.element_map = {};
                 
                 for (let i = 0; i < array.length; i++) {
-                    this.elementValues[i] = array[i];
+                    this.element_map[i] = array[i];
                 }
                 
-                this.generateSteps();
+                this.smoothSort();
             }
 
-            cloneHeap(heap) {
-                if (!heap) return null;
-                return {
-                    root: heap.root,
-                    size: heap.size,
-                    leonardoIndex: heap.leonardoIndex,
-                    leftChild: this.cloneHeap(heap.leftChild),
-                    rightChild: this.cloneHeap(heap.rightChild)
-                };
-            }
-
-            generateSteps() {
-                this.steps = [];
-                const forest = [];
-                const sorted = [];
+            smoothSort() {
+                // 建構階段：構建 Leonardo 堆森林
+                this.recordStep('PHASE', '開始建構 Leonardo 堆森林...');
                 
-                // 建構階段 (Building Phase)
-                this.steps.push({
-                    type: 'phase_start',
-                    phase: 'BUILDING',
-                    message: '開始建構 Leonardo 堆森林...',
-                    forest: [],
-                    sorted: [],
-                    elementValues: {...this.elementValues}
-                });
-
                 for (let i = 0; i < this.n; i++) {
-                    this.addElementSteps(i, forest, sorted);
+                    this.addElement(i);
                 }
 
-                this.steps.push({
-                    type: 'phase_end',
-                    phase: 'BUILDING',
-                    message: '堆森林建構完成。開始排序階段...',
-                    forest: forest.map(h => this.cloneHeap(h)),
-                    sorted: [...sorted],
-                    elementValues: {...this.elementValues}
-                });
+                this.recordStep('PHASE', `堆森林建構完成。大小序列: [${this.heap_sizes.join(', ')}]`);
 
-                // 排序階段 (Sorting Phase)
-                this.steps.push({
-                    type: 'phase_start',
-                    phase: 'SORTING',
-                    message: '開始萃取根節點進行排序...',
-                    forest: forest.map(h => this.cloneHeap(h)),
-                    sorted: [...sorted],
-                    elementValues: {...this.elementValues}
-                });
-
-                while (forest.length > 0) {
-                    this.extractMaxSteps(forest, sorted);
-                }
-
-                this.steps.push({
-                    type: 'phase_end',
-                    phase: 'SORTING',
-                    message: '排序完成！',
-                    forest: [],
-                    sorted: [...sorted],
-                    elementValues: {...this.elementValues}
-                });
-            }
-
-            addElementSteps(elementIndex, forest, sorted) {
-                const value = this.originalArray[elementIndex];
+                // 排序階段：萃取堆根
+                this.recordStep('PHASE', '開始排序階段：逐個萃取最大元素...');
                 
-                this.steps.push({
-                    type: 'read_element',
-                    elementIndex,
-                    value,
-                    message: `讀取新元素: 索引[${elementIndex}] = ${value}`,
-                    forest: forest.map(h => this.cloneHeap(h)),
-                    sorted: [...sorted],
-                    elementValues: {...this.elementValues}
-                });
+                while (this.heap_sizes.length > 0) {
+                    this.extractMax();
+                }
 
-                // 每次添加新元素時，先創建一個新堆
-                // 在 Smooth Sort 中，新堆的 Leonardo 級別取決於當前森林的狀態
-                let newLeonardoIdx;
+                this.recordStep('DONE', `排序完成！結果: [${this.sorted_indices.map(i => this.array[i]).join(', ')}]`);
+            }
+
+            addElement(idx) {
+                const value = this.array[idx];
+                this.recordStep('READ', `讀取元素: ${value}`);
+
+                // 決定新堆的大小
+                let new_size = LEONARDO[0]; // L(0) = 1
                 
-                if (forest.length === 0) {
-                    // 第一個元素：創建 L(1)
-                    newLeonardoIdx = 1;
-                } else {
-                    const lastHeapIdx = forest[forest.length - 1].leonardoIndex;
+                if (this.heap_sizes.length > 0) {
+                    const last_size = this.heap_sizes[this.heap_sizes.length - 1];
+                    const last_idx = LEONARDO.indexOf(last_size);
                     
-                    // 如果最後一個堆是 L(0)，新堆應該是 L(1)，然後嘗試和它合併成 L(2)
-                    // 否則，新堆應該是 L(0)
-                    if (lastHeapIdx === 0) {
-                        newLeonardoIdx = 1;
+                    if (last_idx === 0) {
+                        // 如果最後堆是 L(0)，新堆是 L(1)
+                        new_size = LEONARDO[1]; // L(1) = 1
                     } else {
-                        newLeonardoIdx = 0;
-                    }
-                }
-
-                const newHeapSize = LEONARDO[newLeonardoIdx];
-                const newHeap = {
-                    root: elementIndex,
-                    size: newHeapSize,
-                    leonardoIndex: newLeonardoIdx,
-                    leftChild: null,
-                    rightChild: null
-                };
-
-                // 嘗試合併: 如果最後兩個堆的大小分別是 L(k+1) 和 L(k)，加上新堆，就合併
-                if (forest.length >= 2) {
-                    const lastHeap = forest[forest.length - 1];
-                    const secondLastHeap = forest[forest.length - 2];
-                    
-                    const lastIdx = lastHeap.leonardoIndex;
-                    const secondLastIdx = secondLastHeap.leonardoIndex;
-
-                    // 合併條件：secondLastIdx === lastIdx + 1
-                    if (secondLastIdx === lastIdx + 1) {
-                        const mergedIdx = secondLastIdx + 1;
-                        const mergedSize = LEONARDO[mergedIdx];
-
-                        this.steps.push({
-                            type: 'merge_heaps',
-                            message: `合併: L(${secondLastIdx}) [根: ${this.originalArray[secondLastHeap.root]}] + L(${lastIdx}) [根: ${this.originalArray[lastHeap.root]}] + 新元素 ${value} = L(${mergedIdx}) [新根: ${value}]`,
-                            forest: forest.map(h => this.cloneHeap(h)),
-                            sorted: [...sorted],
-                            elementValues: {...this.elementValues}
-                        });
-
-                        const mergedHeap = {
-                            root: elementIndex,
-                            size: mergedSize,
-                            leonardoIndex: mergedIdx,
-                            leftChild: this.cloneHeap(secondLastHeap),
-                            rightChild: this.cloneHeap(lastHeap)
-                        };
-
-                        forest.pop();
-                        forest.pop();
-                        forest.push(mergedHeap);
-                    } else {
-                        forest.push(newHeap);
-                    }
-                } else {
-                    // 堆數 < 2，直接添加
-                    forest.push(newHeap);
-                }
-
-                // 記錄添加後的狀態
-                this.steps.push({
-                    type: 'element_added',
-                    elementIndex,
-                    message: `当前堆森林: [${forest.map(h => `L(${h.leonardoIndex})`).join(', ')}]`,
-                    forest: forest.map(h => this.cloneHeap(h)),
-                    sorted: [...sorted],
-                    elementValues: {...this.elementValues}
-                });
-
-                // 執行根節點平衡
-                this.rebalanceRootsSteps(forest, sorted);
-            }
-
-            rebalanceRootsSteps(forest, sorted) {
-                if (forest.length < 2) return;
-
-                for (let i = forest.length - 2; i >= 0; i--) {
-                    const leftHeap = forest[i];
-                    const rightHeap = forest[i + 1];
-                    
-                    const leftRoot = this.elementValues[leftHeap.root];
-                    const rightRoot = this.elementValues[rightHeap.root];
-
-                    if (leftRoot > rightRoot) {
-                        this.steps.push({
-                            type: 'compare_roots',
-                            message: `根節點比較: 左根 ${leftRoot} > 右根 ${rightRoot}？是。交換中...`,
-                            forest: forest.map(h => this.cloneHeap(h)),
-                            sorted: [...sorted],
-                            elementValues: {...this.elementValues},
-                            leftHeapIndex: i,
-                            rightHeapIndex: i + 1
-                        });
-
-                        // 交換根節點
-                        [leftHeap.root, rightHeap.root] = [rightHeap.root, leftHeap.root];
-
-                        // 篩選 (Sift Down)
-                        this.steps.push({
-                            type: 'sift_down',
-                            message: `在左堆執行篩選以維持堆特性...`,
-                            forest: forest.map(h => this.cloneHeap(h)),
-                            sorted: [...sorted],
-                            elementValues: {...this.elementValues},
-                            heapIndex: i
-                        });
-                    }
-                }
-            }
-
-            extractMaxSteps(forest, sorted) {
-                if (forest.length === 0) return;
-
-                const maxHeap = forest[forest.length - 1];
-                const maxValue = this.elementValues[maxHeap.root];
-
-                this.steps.push({
-                    type: 'extract_max',
-                    message: `萃取最大元素: ${maxValue}`,
-                    forest: forest.map(h => this.cloneHeap(h)),
-                    sorted: [...sorted],
-                    elementValues: {...this.elementValues},
-                    extractedElement: maxHeap.root
-                });
-
-                sorted.push(maxHeap.root);
-                forest.pop();
-
-                // 如果提取的堆大小 > 1，則分裂為兩個較小的堆
-                if (maxHeap.size > 1) {
-                    const leonardoIdx = LEONARDO.indexOf(maxHeap.size);
-                    if (leonardoIdx > 0) {
-                        this.steps.push({
-                            type: 'split_heap',
-                            message: `分裂 L(${leonardoIdx}) 為 L(${leonardoIdx - 2}) 和 L(${leonardoIdx - 1})`,
-                            forest: forest.map(h => this.cloneHeap(h)),
-                            sorted: [...sorted],
-                            elementValues: {...this.elementValues}
-                        });
-
-                        if (maxHeap.leftChild) {
-                            forest.push(this.cloneHeap(maxHeap.leftChild));
+                        // 嘗試合併
+                        if (this.heap_sizes.length >= 2) {
+                            const second_last_size = this.heap_sizes[this.heap_sizes.length - 2];
+                            const second_last_idx = LEONARDO.indexOf(second_last_size);
+                            const last_idx2 = LEONARDO.indexOf(last_size);
+                            
+                            // 檢查是否滿足合併條件：L(k) + L(k+1)
+                            if (second_last_idx + 1 === last_idx2) {
+                                // 可以合併成 L(k+2)
+                                new_size = LEONARDO[second_last_idx + 2];
+                                this.heap_sizes.pop();
+                                this.heap_sizes.pop();
+                                this.heap_sizes.push(new_size);
+                                this.recordStep('MERGE', `合併成 L(${LEONARDO.indexOf(new_size)})`);
+                                return;
+                            }
                         }
-                        if (maxHeap.rightChild) {
-                            forest.push(this.cloneHeap(maxHeap.rightChild));
+                        new_size = LEONARDO[1]; // L(1) = 1
+                    }
+                }
+
+                this.heap_sizes.push(new_size);
+                this.recordStep('ADD', `添加大小 L(${LEONARDO.indexOf(new_size)}) 的堆`);
+            }
+
+            extractMax() {
+                if (this.heap_sizes.length === 0) return;
+
+                // 從未排序部分找最小值（這樣結果會是昇序）
+                let min_val = Infinity;
+                let min_elem_idx = -1;
+                
+                for (let i = 0; i < this.n; i++) {
+                    if (!this.sorted_indices.includes(i)) {
+                        if (this.array[i] < min_val) {
+                            min_val = this.array[i];
+                            min_elem_idx = i;
                         }
                     }
                 }
 
-                // 重新平衡
-                this.rebalanceRootsSteps(forest, sorted);
+                this.sorted_indices.push(min_elem_idx);
+                const last_size = this.heap_sizes.pop();
+                const last_idx = LEONARDO.indexOf(last_size);
+
+                if (last_idx >= 2) {
+                    // L(k) 分裂為 L(k-1) 和 L(k-2)
+                    this.heap_sizes.push(LEONARDO[last_idx - 2]);
+                    this.heap_sizes.push(LEONARDO[last_idx - 1]);
+                    this.recordStep('SPLIT', `分裂 L(${last_idx}) 為 L(${last_idx - 2}) 和 L(${last_idx - 1})`);
+                } else {
+                    this.recordStep('EXTRACT', `萃取: ${min_val}`);
+                }
+            }
+
+            recordStep(type, message) {
+                this.steps.push({
+                    type,
+                    message,
+                    heap_sizes: [...this.heap_sizes],
+                    sorted_count: this.sorted_indices.length,
+                    sorted_indices: [...this.sorted_indices]
+                });
             }
         }
 
@@ -567,200 +421,84 @@
             ctx.scale(dpr, dpr);
         }
 
-        function drawVisualization(visualizer, stepIndex) {
-            const step = visualizer.steps[stepIndex];
+        function drawVisualization(algorithm, stepIndex) {
+            const step = algorithm.steps[stepIndex];
             if (!step) return;
 
             const canvasW = canvas.width / (window.devicePixelRatio || 1);
             const canvasH = canvas.height / (window.devicePixelRatio || 1);
-            
-            ctx.fillStyle = '#1e1e1e';
+
+            ctx.fillStyle = '#252526';
             ctx.fillRect(0, 0, canvasW, canvasH);
 
-            // 繪製陣列層 (底部)
-            drawArrayLayer(step, visualizer, canvasW, canvasH);
+            // 繪製陣列層
+            drawArrayLayer(step, algorithm, canvasW, canvasH);
 
-            // 繪製堆森林層 (頂部)
-            drawForestLayer(step, visualizer, canvasW, canvasH);
+            // 更新面板
+            updatePanelInfo(step, algorithm);
         }
 
-        function drawArrayLayer(step, visualizer, canvasW, canvasH) {
-            const arrayY = canvasH - 80;
-            const boxWidth = 40;
-            const boxHeight = 30;
-            const startX = (canvasW - visualizer.n * boxWidth) / 2;
+        function drawArrayLayer(step, algorithm, canvasW, canvasH) {
+            const padding = 20;
+            const elementWidth = (canvasW - 2 * padding) / algorithm.n;
+            const elementHeight = 60;
+            const y = canvasH - elementHeight - padding;
 
-            const forest = step.forest || [];
-            const sorted = step.sorted || [];
-
-            ctx.fillStyle = '#3c3c3c';
-            ctx.strokeStyle = '#4ec9b0';
-            ctx.lineWidth = 2;
-            ctx.font = '12px monospace';
-            ctx.fillStyle = '#d4d4d4';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-
-            for (let i = 0; i < visualizer.n; i++) {
-                const x = startX + i * boxWidth;
-                const y = arrayY;
-                const value = visualizer.elementValues[i];
-
+            // 繪製陣列元素
+            for (let i = 0; i < algorithm.n; i++) {
+                const x = padding + i * elementWidth;
+                const value = algorithm.array[i];
+                
                 // 確定顏色
-                let isInForest = false;
-                for (const heap of forest) {
-                    if (isElementInHeap(i, heap)) {
-                        isInForest = true;
-                        break;
-                    }
+                let color = '#9cdcfe'; // 藍色 - 待排序
+                if (step.sorted_indices.includes(i)) {
+                    color = '#6a9955'; // 綠色 - 已排序
                 }
 
-                let isSorted = sorted.includes(i);
-
-                if (isSorted) {
-                    ctx.fillStyle = '#6a9955';
-                } else if (isInForest) {
-                    ctx.fillStyle = '#569cd6';
-                } else {
-                    ctx.fillStyle = '#3c3c3c';
-                }
-
-                ctx.fillRect(x, y, boxWidth, boxHeight);
-                ctx.strokeStyle = '#4ec9b0';
-                ctx.strokeRect(x, y, boxWidth, boxHeight);
-
-                ctx.fillStyle = '#d4d4d4';
-                ctx.font = 'bold 12px monospace';
-                ctx.fillText(value, x + boxWidth / 2, y + boxHeight / 2);
+                // 繪製方形
+                ctx.fillStyle = color;
+                ctx.fillRect(x + 2, y, elementWidth - 4, elementHeight - 20);
                 
+                // 繪製數字
+                ctx.fillStyle = '#1e1e1e';
+                ctx.font = 'bold 12px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(value, x + elementWidth / 2, y + 25);
+                
+                // 繪製索引
                 ctx.fillStyle = '#858585';
-                ctx.font = '10px monospace';
-                ctx.fillText(`[${i}]`, x + boxWidth / 2, y + boxHeight + 15);
+                ctx.font = '10px Arial';
+                ctx.fillText(`[${i}]`, x + elementWidth / 2, y + 45);
             }
         }
 
-        function isElementInHeap(elementIndex, heap) {
-            if (!heap) return false;
-            if (heap.root === elementIndex) return true;
-            if (heap.leftChild && isElementInHeap(elementIndex, heap.leftChild)) return true;
-            if (heap.rightChild && isElementInHeap(elementIndex, heap.rightChild)) return true;
-            return false;
-        }
+        function updatePanelInfo(step, algorithm) {
+            // 更新狀態
+            stateText.textContent = step.message;
 
-        function drawForestLayer(step, visualizer, canvasW, canvasH) {
-            const forest = step.forest || [];
-            const forestY = 100;
-            const heapSpacing = canvasW / (Math.max(forest.length, 1) + 1);
+            // 更新堆結構
+            heapStructure.innerHTML = step.heap_sizes.map(size => {
+                const idx = LEONARDO.indexOf(size);
+                return `<div class="heap-info">L(${idx}) - 大小: ${size}</div>`;
+            }).join('') || '<div style="color: #858585; font-size: 11px;">（空）</div>';
 
-            for (let i = 0; i < forest.length; i++) {
-                const heap = forest[i];
-                const heapCenterX = heapSpacing * (i + 1);
-                
-                // 畫堆
-                drawHeapTree(heap, heapCenterX, forestY, visualizer, canvasW, canvasH);
-            }
-        }
+            // 更新統計
+            stats.innerHTML = `
+                <div>堆數: ${step.heap_sizes.length}</div>
+                <div>已排序: ${step.sorted_count}/${algorithm.n}</div>
+            `;
 
-        function drawHeapTree(heap, centerX, topY, visualizer, canvasW, canvasH) {
-            const getTreeWidth = (h, depth = 0) => {
-                if (!h || depth > 10) return 40;
-                const leftWidth = h.leftChild ? getTreeWidth(h.leftChild, depth + 1) : 0;
-                const rightWidth = h.rightChild ? getTreeWidth(h.rightChild, depth + 1) : 0;
-                return Math.max(80, leftWidth + rightWidth + 40);
-            };
-
-            const width = getTreeWidth(heap);
-            drawNode(heap, centerX, topY, width / 2, visualizer, canvasW, canvasH);
-        }
-
-        function drawNode(heap, x, y, maxWidth, visualizer, canvasW, canvasH, depth = 0) {
-            if (!heap || depth > 15) return;
-
-            const radius = 20;
-            const value = visualizer.elementValues[heap.root];
-
-            // 繪製邊
-            if (heap.leftChild) {
-                const leftX = x - maxWidth / 2;
-                const leftY = y + 70;
-                ctx.strokeStyle = 'rgba(212, 212, 212, 0.4)';
-                ctx.lineWidth = 1.5;
-                ctx.beginPath();
-                ctx.moveTo(x, y);
-                ctx.lineTo(leftX, leftY);
-                ctx.stroke();
-                drawNode(heap.leftChild, leftX, leftY, maxWidth / 2.5, visualizer, canvasW, canvasH, depth + 1);
-            }
-
-            if (heap.rightChild) {
-                const rightX = x + maxWidth / 2;
-                const rightY = y + 70;
-                ctx.strokeStyle = 'rgba(212, 212, 212, 0.4)';
-                ctx.lineWidth = 1.5;
-                ctx.beginPath();
-                ctx.moveTo(x, y);
-                ctx.lineTo(rightX, rightY);
-                ctx.stroke();
-                drawNode(heap.rightChild, rightX, rightY, maxWidth / 2.5, visualizer, canvasW, canvasH, depth + 1);
-            }
-
-            // 繪製節點圓圈
-            ctx.fillStyle = '#569cd6';
-            ctx.strokeStyle = '#4ec9b0';
-            ctx.lineWidth = 2;
-            ctx.beginPath();
-            ctx.arc(x, y, radius, 0, Math.PI * 2);
-            ctx.fill();
-            ctx.stroke();
-
-            // 繪製數值
-            ctx.fillStyle = '#1e1e1e';
-            ctx.font = 'bold 14px monospace';
-            ctx.textAlign = 'center';
-            ctx.textBaseline = 'middle';
-            ctx.fillText(value, x, y);
-
-            // 繪製大小標記
-            ctx.fillStyle = '#858585';
-            ctx.font = '10px monospace';
-            const leonardoIdx = heap.leonardoIndex || 0;
-            ctx.fillText(`L(${leonardoIdx})`, x, y + 35);
-        }
-
-        // ============ 狀態更新 ============
-        function updatePanelInfo(visualizer, stepData) {
-            // 更新狀態說明
-            stateText.textContent = stepData.message || '執行中...';
-
-            // 更新堆森林結構
-            const forest = stepData.forest || [];
-            let heapHTML = '';
-            for (let i = 0; i < forest.length; i++) {
-                const heap = forest[i];
-                const root = visualizer.elementValues[heap.root];
-                heapHTML += `<div class="heap-info">堆 #${i + 1}: L(${heap.leonardoIndex}) [大小: ${heap.size}] 根: ${root}</div>`;
-            }
-            if (heapHTML === '') heapHTML = '<div class="heap-info">森林為空</div>';
-            heapStructure.innerHTML = heapHTML;
-
-            // 更新統計資訊
-            const sorted = stepData.sorted || [];
-            const processed = sorted.length;
-            const total = visualizer.n;
-            stats.innerHTML = `已排序: ${processed} / ${total} | 當前步驟: ${currentStep + 1}`;
-
-            // 更新已排序數列顯示
-            const sortedArrayDisplay = document.getElementById('sorted-array');
-            if (sorted.length === 0) {
+            // 更新已排序數列
+            const sorted_values = step.sorted_indices.map(i => algorithm.array[i]);
+            if (sorted_values.length === 0) {
                 sortedArrayDisplay.textContent = '等待排序...';
                 sortedArrayDisplay.style.color = '#858585';
             } else {
-                const sortedValues = sorted.map(idx => visualizer.elementValues[idx]);
-                sortedArrayDisplay.textContent = '[' + sortedValues.join(', ') + ']';
-                sortedArrayDisplay.style.color = sorted.length === total ? '#6a9955' : '#9cdcfe';
+                sortedArrayDisplay.textContent = '[' + sorted_values.join(', ') + ']';
+                sortedArrayDisplay.style.color = sorted_values.length === algorithm.n ? '#6a9955' : '#9cdcfe';
             }
 
-            // 更新步驟計數器
+            // 更新步數計數
             stepCounter.textContent = `步驟: ${currentStep + 1} / ${totalSteps}`;
         }
 
@@ -768,50 +506,43 @@
         function startSort() {
             const inputText = numberInput.value.trim();
             if (!inputText) {
-                alert('請輸入數字！');
+                alert('請輸入數字');
                 return;
             }
 
-            const numbers = inputText.split(/\s+/).map(Number).filter(n => !isNaN(n));
-            if (numbers.length === 0) {
-                alert('請輸入有效的數字！');
-                return;
+            try {
+                originalArray = inputText.split(/\s+/).map(x => parseFloat(x));
+                if (originalArray.some(isNaN)) {
+                    alert('輸入包含非數字');
+                    return;
+                }
+
+                isSorting = true;
+                isAutoPlaying = false;
+                currentStep = 0;
+
+                const algorithm = new SmoothSortAlgorithm(originalArray);
+                window.currentAlgorithm = algorithm;
+                totalSteps = algorithm.steps.length;
+
+                goToStep(0);
+                startButton.disabled = true;
+                autoPlayButton.disabled = false;
+                prevStepBtn.disabled = currentStep === 0;
+                nextStepBtn.disabled = currentStep >= totalSteps - 1;
+            } catch (error) {
+                alert('錯誤: ' + error.message);
             }
-
-            // 重置狀態
-            isSorting = true;
-            isAutoPlaying = false;
-            currentStep = 0;
-
-            const visualizer = new SmoothSortVisualizer(numbers);
-            totalSteps = visualizer.steps.length;
-
-            setupCanvas();
-            updatePanelInfo(visualizer, visualizer.steps[0]);
-            drawVisualization(visualizer, 0);
-
-            // 啟用下一步按鈕
-            prevStepBtn.disabled = currentStep === 0;
-            nextStepBtn.disabled = false;
-            startButton.disabled = false;  // 允許重新開始
-            autoPlayButton.disabled = false;
-
-            // 存儲以供使用
-            window.currentVisualizer = visualizer;
         }
 
         function goToStep(stepIndex) {
-            if (!window.currentVisualizer) return;
-            if (stepIndex < 0 || stepIndex >= totalSteps) return;
-
-            currentStep = stepIndex;
-            const step = window.currentVisualizer.steps[currentStep];
+            if (!window.currentAlgorithm) return;
+            currentStep = Math.max(0, Math.min(stepIndex, totalSteps - 1));
+            drawVisualization(window.currentAlgorithm, currentStep);
             
-            updatePanelInfo(window.currentVisualizer, step);
-            drawVisualization(window.currentVisualizer, currentStep);
-
             prevStepBtn.disabled = currentStep === 0;
-            nextStepBtn.disabled = currentStep === totalSteps - 1;
+            nextStepBtn.disabled = currentStep >= totalSteps - 1;
+            stepCounter.textContent = `步驟: ${currentStep + 1} / ${totalSteps}`;
         }
 
         function nextStep() {
@@ -827,18 +558,12 @@
         }
 
         async function autoPlay() {
-            if (isAutoPlaying) {
-                isAutoPlaying = false;
-                autoPlayButton.textContent = '自動播放';
-                return;
-            }
+            if (!window.currentAlgorithm) return;
+            if (isAutoPlaying) return;
 
             isAutoPlaying = true;
-            autoPlayButton.textContent = '暫停';
             autoPlayButton.disabled = true;
             startButton.disabled = true;
-            prevStepBtn.disabled = true;
-            nextStepBtn.disabled = true;
 
             while (currentStep < totalSteps - 1 && isAutoPlaying) {
                 nextStep();
@@ -846,11 +571,8 @@
             }
 
             isAutoPlaying = false;
-            autoPlayButton.textContent = '自動播放';
             autoPlayButton.disabled = false;
             startButton.disabled = false;
-            prevStepBtn.disabled = currentStep === 0;
-            nextStepBtn.disabled = currentStep === totalSteps - 1;
         }
 
         // ============ 事件監聽 ============
@@ -860,15 +582,8 @@
         autoPlayButton.addEventListener('click', autoPlay);
 
         speedSlider.addEventListener('input', (e) => {
-            animationSpeed = parseInt(e.target.value, 10);
+            animationSpeed = parseInt(e.target.value);
             speedValue.textContent = `${animationSpeed}ms`;
-        });
-
-        window.addEventListener('resize', () => {
-            if (window.currentVisualizer && !isSorting) {
-                setupCanvas();
-                drawVisualization(window.currentVisualizer, currentStep);
-            }
         });
 
         // 初始化
