@@ -100,32 +100,31 @@
             margin-bottom: 20px;
         }
         #canvas-section {
-            flex: 2;
-            background-color: #252526;
+            flex: 1;
+            background-color: #1e1e1e;
             border: 1px solid #3c3c3c;
             border-radius: 8px;
             padding: 15px;
+            min-width: 600px;
         }
         canvas {
+            border: 1px solid #3c3c3c;
+            border-radius: 4px;
+            background-color: #252526;
             display: block;
             width: 100%;
-            background-color: #1e1e1e;
-            border-radius: 4px;
-            margin-bottom: 15px;
         }
         #info-panel {
-            flex: 1;
-            background-color: #252526;
+            width: 350px;
+            background-color: #1e1e1e;
             border: 1px solid #3c3c3c;
             border-radius: 8px;
-            padding: 20px;
-            display: flex;
-            flex-direction: column;
-            gap: 15px;
-            max-height: 600px;
+            padding: 15px;
             overflow-y: auto;
+            max-height: 650px;
         }
         .panel-section {
+            margin-bottom: 20px;
             border-bottom: 1px solid #3c3c3c;
             padding-bottom: 15px;
         }
@@ -133,37 +132,37 @@
             border-bottom: none;
         }
         .section-title {
-            font-size: 13px;
             font-weight: bold;
             color: #4ec9b0;
             margin-bottom: 8px;
-            display: flex;
-            align-items: center;
-            gap: 5px;
+            font-size: 12px;
+            text-transform: uppercase;
         }
         .state-description {
             font-size: 12px;
+            line-height: 1.6;
             color: #d4d4d4;
-            line-height: 1.5;
-            word-wrap: break-word;
         }
         .heap-info {
             font-size: 11px;
+            background-color: #252526;
+            padding: 8px;
+            border-radius: 4px;
+            border-left: 2px solid #4ec9b0;
+            margin: 5px 0;
             color: #9cdcfe;
-            background-color: #1e1e1e;
-            padding: 6px 10px;
-            border-radius: 3px;
-            margin: 3px 0;
+            word-break: break-word;
         }
         .legend {
-            font-size: 11px;
-            margin-top: 10px;
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
         }
         .legend-item {
             display: flex;
             align-items: center;
-            gap: 6px;
-            margin: 3px 0;
+            gap: 8px;
+            font-size: 11px;
         }
         .legend-color {
             width: 12px;
@@ -172,20 +171,23 @@
         }
         .legend-item.blue .legend-color { background-color: #9cdcfe; }
         .legend-item.gold .legend-color { background-color: #dcdcaa; }
+        .legend-item.red .legend-color { background-color: #f48771; }
+        .legend-item.green .legend-color { background-color: #6a9955; }
         .button-group {
             display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
+            gap: 5px;
+            margin: 10px 0;
         }
         #prev-step, #next-step {
             flex: 1;
             padding: 8px 12px;
-            border: none;
+            border: 1px solid #3c3c3c;
             background-color: #0e639c;
             color: white;
             border-radius: 4px;
             cursor: pointer;
             font-size: 12px;
+            font-weight: 500;
             transition: background-color 0.3s;
         }
         #prev-step:hover:not(:disabled), #next-step:hover:not(:disabled) {
@@ -197,15 +199,16 @@
             opacity: 0.6;
         }
         .step-counter {
+            text-align: center;
             font-size: 11px;
             color: #858585;
-            text-align: center;
+            margin: 5px 0;
         }
     </style>
 </head>
 <body>
     <h1>🌲 Smooth Sort 視覺化 - Leonardo 堆森林</h1>
-    <p class="subtitle">實時觀看Leonardo堆樹形結構的構建與排序過程</p>
+    <p class="subtitle">X-Ray 演算法檢視：從底部陣列到頂部堆森林的完整視圖</p>
     
     <div id="controls">
         <input type="text" id="number-input" placeholder="輸入數字，用空格分隔 (例如: 7 2 8 1 4 9)">
@@ -213,7 +216,7 @@
         <button id="auto-play-button">自動播放</button>
         <div class="slider-container">
             <label>速度:</label>
-            <input type="range" id="speed-slider" min="100" max="2000" value="600" step="100">
+            <input type="range" id="speed-slider" min="100" max="1000" value="600">
             <span id="speed-value">600ms</span>
         </div>
     </div>
@@ -224,30 +227,27 @@
         </div>
         <div id="info-panel">
             <div class="panel-section">
-                <div class="section-title">📊 演算法狀態</div>
-                <div class="state-description" id="state-text">點擊「開始排序」開始</div>
+                <div class="section-title">📊 當前狀態</div>
+                <div class="state-description" id="state-text">準備就緒</div>
             </div>
-
             <div class="panel-section">
-                <div class="section-title">🏔️ Leonardo 堆森林</div>
-                <div id="heap-structure">
-                    <div style="color: #858585; font-size: 11px;">（等待開始）</div>
-                </div>
+                <div class="section-title">🏔️ 堆森林結構</div>
+                <div id="heap-structure"></div>
+                <div id="stats" style="font-size: 11px; color: #858585; margin-top: 10px;"></div>
             </div>
-
-            <div class="panel-section">
-                <div class="section-title">📈 統計信息</div>
-                <div id="stats" style="font-size: 11px; color: #d4d4d4;">
-                    <div>堆的數量: 0</div>
-                    <div>已排序: 0/0</div>
-                </div>
-            </div>
-
             <div class="panel-section">
                 <div class="section-title">✅ 已排序數列</div>
                 <div id="sorted-array" style="background-color: #1e3a3a; color: #6a9955; padding: 8px; border-radius: 4px; font-weight: bold;">等待排序...</div>
             </div>
-
+            <div class="panel-section">
+                <div class="section-title">📍 圖例</div>
+                <div class="legend">
+                    <div class="legend-item blue"><div class="legend-color"></div>待排序元素</div>
+                    <div class="legend-item gold"><div class="legend-color"></div>堆根節點</div>
+                    <div class="legend-item green"><div class="legend-color"></div>已排序</div>
+                    <div class="legend-item red"><div class="legend-color"></div>當前操作</div>
+                </div>
+            </div>
             <div class="panel-section">
                 <div class="button-group">
                     <button id="prev-step">⬅️ 上一步</button>
@@ -285,6 +285,7 @@
         let currentStep = 0;
         let totalSteps = 0;
         let isAutoPlaying = false;
+        let animationFrameId = null;
         let originalArray = [];
 
         // ============ Smooth Sort 完整實現 ============
@@ -390,10 +391,10 @@
             const dpr = window.devicePixelRatio || 1;
             
             canvas.width = (rect.width - 30) * dpr;
-            canvas.height = 500 * dpr;
+            canvas.height = 600 * dpr;
             
             canvas.style.width = `${rect.width - 30}px`;
-            canvas.style.height = '500px';
+            canvas.style.height = '600px';
             
             ctx.scale(dpr, dpr);
         }
@@ -491,6 +492,7 @@
             }
         }
 
+
         function drawArrayLayer(step, algorithm, canvasW, canvasH) {
             const padding = 20;
             const elementHeight = 50;
@@ -570,13 +572,13 @@
 
         // ============ 主控制邏輯 ============
         function startSort() {
-            try {
-                const inputText = numberInput.value.trim();
-                if (!inputText) {
-                    alert('請輸入數字');
-                    return;
-                }
+            const inputText = numberInput.value.trim();
+            if (!inputText) {
+                alert('請輸入數字');
+                return;
+            }
 
+            try {
                 originalArray = inputText.split(/\s+/).map(x => parseFloat(x));
                 if (originalArray.some(isNaN)) {
                     alert('輸入包含非數字');
@@ -592,35 +594,23 @@
                 totalSteps = algorithm.steps.length;
 
                 goToStep(0);
-                
-                try {
-                    startButton.disabled = true;
-                    autoPlayButton.disabled = false;
-                } catch (e) {
-                    console.error('設置按鈕狀態失敗:', e);
-                }
+                startButton.disabled = true;
+                autoPlayButton.disabled = false;
+                prevStepBtn.disabled = currentStep === 0;
+                nextStepBtn.disabled = currentStep >= totalSteps - 1;
             } catch (error) {
                 alert('錯誤: ' + error.message);
-                console.error(error);
             }
         }
 
         function goToStep(stepIndex) {
-            try {
-                if (!window.currentAlgorithm) return;
-                currentStep = Math.max(0, Math.min(stepIndex, totalSteps - 1));
-                drawVisualization(window.currentAlgorithm, currentStep);
-                
-                try {
-                    prevStepBtn.disabled = currentStep === 0;
-                    nextStepBtn.disabled = currentStep >= totalSteps - 1;
-                } catch (e) {
-                    console.error('設置步驟按鈕狀態失敗:', e);
-                }
-                stepCounter.textContent = `步驟: ${currentStep + 1} / ${totalSteps}`;
-            } catch (error) {
-                console.error('跳轉步驟失敗:', error);
-            }
+            if (!window.currentAlgorithm) return;
+            currentStep = Math.max(0, Math.min(stepIndex, totalSteps - 1));
+            drawVisualization(window.currentAlgorithm, currentStep);
+            
+            prevStepBtn.disabled = currentStep === 0;
+            nextStepBtn.disabled = currentStep >= totalSteps - 1;
+            stepCounter.textContent = `步驟: ${currentStep + 1} / ${totalSteps}`;
         }
 
         function nextStep() {
@@ -639,50 +629,36 @@
             if (!window.currentAlgorithm) return;
             if (isAutoPlaying) return;
 
-            try {
-                isAutoPlaying = true;
-                autoPlayButton.disabled = true;
-                startButton.disabled = true;
+            isAutoPlaying = true;
+            autoPlayButton.disabled = true;
+            startButton.disabled = true;
 
-                while (currentStep < totalSteps - 1 && isAutoPlaying) {
-                    nextStep();
-                    await new Promise(resolve => setTimeout(resolve, animationSpeed));
-                }
-
-                isAutoPlaying = false;
-                autoPlayButton.disabled = false;
-                startButton.disabled = false;
-            } catch (error) {
-                console.error('自動播放失敗:', error);
-                isAutoPlaying = false;
-                autoPlayButton.disabled = false;
-                startButton.disabled = false;
+            while (currentStep < totalSteps - 1 && isAutoPlaying) {
+                nextStep();
+                await new Promise(resolve => setTimeout(resolve, animationSpeed));
             }
+
+            isAutoPlaying = false;
+            autoPlayButton.disabled = false;
+            startButton.disabled = false;
         }
 
         // ============ 事件監聽 ============
-        if (startButton) startButton.addEventListener('click', startSort);
-        if (nextStepBtn) nextStepBtn.addEventListener('click', nextStep);
-        if (prevStepBtn) prevStepBtn.addEventListener('click', prevStep);
-        if (autoPlayButton) autoPlayButton.addEventListener('click', autoPlay);
+        startButton.addEventListener('click', startSort);
+        nextStepBtn.addEventListener('click', nextStep);
+        prevStepBtn.addEventListener('click', prevStep);
+        autoPlayButton.addEventListener('click', autoPlay);
 
-        if (speedSlider) {
-            speedSlider.addEventListener('input', (e) => {
-                animationSpeed = parseInt(e.target.value);
-                speedValue.textContent = `${animationSpeed}ms`;
-            });
-        }
+        speedSlider.addEventListener('input', (e) => {
+            animationSpeed = parseInt(e.target.value);
+            speedValue.textContent = `${animationSpeed}ms`;
+        });
 
         // 初始化
-        try {
-            numberInput.value = "7 2 8 1 4 9";
-            setupCanvas();
-            
-            if (prevStepBtn) prevStepBtn.disabled = true;
-            if (nextStepBtn) nextStepBtn.disabled = true;
-        } catch (error) {
-            console.error('初始化失敗:', error);
-        }
+        numberInput.value = "7 2 8 1 4 9";
+        setupCanvas();
+        prevStepBtn.disabled = true;
+        nextStepBtn.disabled = true;
     </script>
 </body>
 </html>
