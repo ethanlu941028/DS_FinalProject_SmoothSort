@@ -250,6 +250,10 @@
                 <div class="heap-info" id="stats">已讀取: 0 / 步驟: 0</div>
             </div>
             <div class="panel-section">
+                <div class="section-title">✅ 已排序數列</div>
+                <div class="heap-info" id="sorted-array" style="background-color: #1e3a3a; color: #6a9955;">等待排序...</div>
+            </div>
+            <div class="panel-section">
                 <div class="section-title">🎨 圖例</div>
                 <div class="legend">
                     <div class="legend-item blue"><div class="legend-color"></div> <span>合併中的子堆</span></div>
@@ -745,14 +749,23 @@
             const total = visualizer.n;
             stats.innerHTML = `已排序: ${processed} / ${total} | 當前步驟: ${currentStep + 1}`;
 
+            // 更新已排序數列顯示
+            const sortedArrayDisplay = document.getElementById('sorted-array');
+            if (sorted.length === 0) {
+                sortedArrayDisplay.textContent = '等待排序...';
+                sortedArrayDisplay.style.color = '#858585';
+            } else {
+                const sortedValues = sorted.map(idx => visualizer.elementValues[idx]);
+                sortedArrayDisplay.textContent = '[' + sortedValues.join(', ') + ']';
+                sortedArrayDisplay.style.color = sorted.length === total ? '#6a9955' : '#9cdcfe';
+            }
+
             // 更新步驟計數器
             stepCounter.textContent = `步驟: ${currentStep + 1} / ${totalSteps}`;
         }
 
         // ============ 主控制邏輯 ============
         function startSort() {
-            if (isSorting) return;
-
             const inputText = numberInput.value.trim();
             if (!inputText) {
                 alert('請輸入數字！');
@@ -765,6 +778,7 @@
                 return;
             }
 
+            // 重置狀態
             isSorting = true;
             isAutoPlaying = false;
             currentStep = 0;
@@ -779,6 +793,8 @@
             // 啟用下一步按鈕
             prevStepBtn.disabled = currentStep === 0;
             nextStepBtn.disabled = false;
+            startButton.disabled = false;  // 允許重新開始
+            autoPlayButton.disabled = false;
 
             // 存儲以供使用
             window.currentVisualizer = visualizer;
