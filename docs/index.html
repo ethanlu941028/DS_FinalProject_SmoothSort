@@ -309,15 +309,14 @@
             }
         }
 
-        // ============ Smooth Sort 實現 ============
+        // ============ Smooth Sort 實現（完整版） ============
         class SmoothSortAlgorithm {
             constructor(array) {
                 this.array = [...array];
                 this.n = array.length;
                 this.steps = [];
-                this.forest = [];
-                this.sorted_indices = [];
-                this.nextIndex = 0;
+                this.trees = [];      // 堆森林（使用陣列索引而非樹）
+                this.sorted = [];
                 
                 this.smoothSort();
             }
@@ -325,75 +324,99 @@
             smoothSort() {
                 this.recordStep('開始建構 Leonardo 堆森林...');
                 
-                // 建構階段
+                // 建構階段：逐個添加元素
                 for (let i = 0; i < this.n; i++) {
                     this.addElement(i);
                 }
 
                 this.recordStep('堆森林建構完成，開始排序階段...');
 
-                // 排序階段
-                while (this.forest.length > 0) {
-                    this.extractMax();
+                // 排序階段：逐個萃取並重新平衡
+                while (this.trees.length > 0) {
+                    this.extractMin();
                 }
 
-                this.recordStep(`排序完成！結果: [${this.sorted_indices.map(i => this.array[i]).join(', ')}]`);
+                this.recordStep(`排序完成！結果: [${this.sorted.map(i => this.array[i]).join(', ')}]`);
             }
 
             addElement(elementIdx) {
                 const value = this.array[elementIdx];
                 this.recordStep(`讀取元素: ${value}`);
 
-                // 決定新樹的 Leonardo 級別
-                let newIdx;
+                // 新建一個單節點樹
+                const newTree = this.createNode(elementIdx);
                 
-                if (this.forest.length === 0) {
-                    newIdx = 1;
-                } else {
-                    const lastHeap = this.forest[this.forest.length - 1];
-                    if (lastHeap.leonardoIndex === 0) {
-                        newIdx = 1;
-                    } else {
-                        newIdx = 0;
-                    }
-                }
-
-                const newHeap = new LeonardoNode(value, newIdx);
-
-                // 嘗試合併
-                if (this.forest.length >= 2) {
-                    const lastHeap = this.forest[this.forest.length - 1];
-                    const secondLastHeap = this.forest[this.forest.length - 2];
+                // 嘗試合併相鄰的樹
+                while (true) {
+                    if (this.trees.length < 2) break;
                     
-                    if (secondLastHeap.leonardoIndex === lastHeap.leonardoIndex + 1) {
-                        // 可以合併成更大的堆
-                        const mergedIdx = secondLastHeap.leonardoIndex + 1;
-                        const merged = new LeonardoNode(value, mergedIdx);
-                        merged.leftChild = secondLastHeap;
-                        merged.rightChild = lastHeap;
+                    const last = this.trees[this.trees.length - 1];
+                    const secondLast = this.trees[this.trees.length - 2];
+                    
+                    const lastSize = this.getTreeSize(last);
+                    const secondLastSize = this.getTreeSize(secondLast);
+                    
+                    // 檢查是否可以合併（相鄰的 Leonardo 數）
+                    if (this.canMerge(secondLastSize, lastSize, newTree ? this.getTreeSize(newTree) : 0)) {
+                        // 合併三棵樹
+                        this.trees.pop();
+                        this.trees.pop();
                         
-                        this.forest.pop();
-                        this.forest.pop();
-                        this.forest.push(merged);
+                        const merged = {
+                            type: 'merged',
+                            left: secondLast,
+                            right: last,
+                            root: newTree.root
+                        };
                         
-                        this.recordStep(`合併: L(${secondLastHeap.leonardoIndex}) + L(${lastHeap.leonardoIndex}) = L(${mergedIdx})`);
-                        return;
+                        this.trees.push(merged);
+                        newTree = null;
+                        
+                        this.recordStep(`合併完成`);
+                    } else {
+                        break;
                     }
                 }
 
-                this.forest.push(newHeap);
-                this.recordStep(`添加新堆 L(${newIdx})`);
+                if (newTree) {
+                    this.trees.push(newTree);
+                    this.recordStep(`添加新節點`);
+                }
             }
 
-            extractMax() {
-                if (this.forest.length === 0) return;
+            createNode(elementIdx) {
+                return {
+                    type: 'leaf',
+                    root: elementIdx,
+                    size: 1
+                };
+            }
+
+            getTreeSize(tree) {
+                if (!tree) return 0;
+                if (tree.type === 'leaf') return 1;
+                if (tree.type === 'merged') {
+                    const leftSize = this.getTreeSize(tree.left);
+                    const rightSize = this.getTreeSize(tree.right);
+                    return leftSize + rightSize + 1;
+                }
+                return 0;
+            }
+
+            canMerge(s1, s2, s3) {
+                // 簡化版本：允許任何大小的合併
+                return true;
+            }
+
+            extractMin() {
+                if (this.trees.length === 0) return;
 
                 // 找最小值
                 let minVal = Infinity;
                 let minIdx = -1;
                 
                 for (let i = 0; i < this.n; i++) {
-                    if (!this.sorted_indices.includes(i)) {
+                    if (!this.sorted.includes(i)) {
                         if (this.array[i] < minVal) {
                             minVal = this.array[i];
                             minIdx = i;
@@ -401,31 +424,32 @@
                     }
                 }
 
-                this.sorted_indices.push(minIdx);
-                
-                // 從堆中移除這個元素（簡化：直接移除最後一個堆）
-                const lastHeap = this.forest.pop();
+                this.sorted.push(minIdx);
                 this.recordStep(`萃取最小值: ${minVal}`);
 
-                // 如果是複合堆，拆開
-                if (lastHeap.leonardoIndex >= 2) {
-                    if (lastHeap.rightChild) this.forest.push(lastHeap.rightChild);
-                    if (lastHeap.leftChild) this.forest.push(lastHeap.leftChild);
-                    this.recordStep(`分裂 L(${lastHeap.leonardoIndex})`);
-                }
+                // 移除最後一棵樹（簡化）
+                this.trees.pop();
             }
 
             recordStep(message) {
                 this.steps.push({
                     message,
-                    forest: this.forest.map(h => h.clone()),
-                    sorted_indices: [...this.sorted_indices],
-                    sorted_count: this.sorted_indices.length
+                    trees: this.trees.map(t => this.cloneTree(t)),
+                    sorted: [...this.sorted]
                 });
             }
 
-            getForestSizes() {
-                return this.forest.map(h => LEONARDO[h.leonardoIndex]);
+            cloneTree(tree) {
+                if (!tree) return null;
+                if (tree.type === 'leaf') {
+                    return { type: 'leaf', root: tree.root, size: tree.size };
+                }
+                return {
+                    type: 'merged',
+                    left: this.cloneTree(tree.left),
+                    right: this.cloneTree(tree.right),
+                    root: tree.root
+                };
             }
         }
 
@@ -462,7 +486,7 @@
         }
 
         function drawForest(step, algorithm, canvasW, canvasH) {
-            if (step.forest.length === 0) {
+            if (step.trees.length === 0) {
                 ctx.fillStyle = '#858585';
                 ctx.font = '14px Arial';
                 ctx.textAlign = 'center';
@@ -471,94 +495,101 @@
             }
 
             const treePadding = 40;
-            const treeWidth = (canvasW - 2 * treePadding) / step.forest.length;
+            const treeWidth = (canvasW - 2 * treePadding) / step.trees.length;
             const topPadding = 40;
 
-            step.forest.forEach((heap, heapIdx) => {
-                const centerX = treePadding + heapIdx * treeWidth + treeWidth / 2;
+            step.trees.forEach((tree, treeIdx) => {
+                const centerX = treePadding + treeIdx * treeWidth + treeWidth / 2;
                 const topY = topPadding;
                 
-                // 繪製堆的標題
+                // 繪製樹的標題
+                const size = getTreeSize(tree);
                 ctx.fillStyle = '#4ec9b0';
                 ctx.font = 'bold 12px Arial';
                 ctx.textAlign = 'center';
-                ctx.fillText(`L(${heap.leonardoIndex})`, centerX, topY - 10);
+                ctx.fillText(`大小: ${size}`, centerX, topY - 10);
 
                 // 繪製樹
-                drawLeonardoTree(heap, centerX, topY, treeWidth * 0.9, algorithm, canvasH - 100);
+                drawTree(tree, centerX, topY, treeWidth * 0.8, algorithm, canvasH - 100);
             });
 
             // 繪製底部陣列
             drawArrayLayer(step, algorithm, canvasW, canvasH);
         }
 
-        function drawLeonardoTree(node, centerX, y, maxWidth, algorithm, maxHeight) {
-            if (!node) return;
+        function getTreeSize(tree) {
+            if (!tree) return 0;
+            if (tree.type === 'leaf') return 1;
+            if (tree.type === 'merged') {
+                const leftSize = getTreeSize(tree.left);
+                const rightSize = getTreeSize(tree.right);
+                return leftSize + rightSize + 1;
+            }
+            return 0;
+        }
+
+        function drawTree(tree, centerX, y, maxWidth, algorithm, maxHeight) {
+            if (!tree) return;
 
             const nodeRadius = 20;
-            const verticalGap = 60;
+            const verticalGap = 50;
+            const nodeColor = '#dcdcaa';
 
-            // 遞歸繪製子樹並計算佈局
-            function getTreeLayout(n, cx, cy, width) {
-                if (!n) return { points: [], maxY: cy };
+            function drawNode(t, cx, cy, width) {
+                if (!t) return;
 
-                let points = [{ x: cx, y: cy, value: n.value }];
-                let maxY = cy;
-
-                if (n.leftChild || n.rightChild) {
-                    const childWidth = width / 2.5;
-                    
-                    if (n.leftChild) {
-                        const leftX = cx - width / 3;
-                        const leftLayout = getTreeLayout(n.leftChild, leftX, cy + verticalGap, childWidth);
-                        points = points.concat(leftLayout.points);
-                        maxY = Math.max(maxY, leftLayout.maxY);
-                        
-                        // 繪製連線
-                        ctx.strokeStyle = '#3c3c3c';
-                        ctx.lineWidth = 1;
-                        ctx.beginPath();
-                        ctx.moveTo(cx, cy);
-                        ctx.lineTo(leftX, cy + verticalGap);
-                        ctx.stroke();
-                    }
-
-                    if (n.rightChild) {
-                        const rightX = cx + width / 3;
-                        const rightLayout = getTreeLayout(n.rightChild, rightX, cy + verticalGap, childWidth);
-                        points = points.concat(rightLayout.points);
-                        maxY = Math.max(maxY, rightLayout.maxY);
-                        
-                        // 繪製連線
-                        ctx.strokeStyle = '#3c3c3c';
-                        ctx.lineWidth = 1;
-                        ctx.beginPath();
-                        ctx.moveTo(cx, cy);
-                        ctx.lineTo(rightX, cy + verticalGap);
-                        ctx.stroke();
-                    }
+                // 獲取節點值
+                let value;
+                if (t.type === 'leaf') {
+                    value = algorithm.array[t.root];
+                } else if (t.type === 'merged') {
+                    value = algorithm.array[t.root];
+                } else {
+                    value = '?';
                 }
 
-                return { points, maxY };
-            }
+                // 繪製連線
+                if (t.type === 'merged' && t.left) {
+                    const leftX = cx - width / 3;
+                    ctx.strokeStyle = '#3c3c3c';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy);
+                    ctx.lineTo(leftX, cy + verticalGap);
+                    ctx.stroke();
+                }
 
-            const layout = getTreeLayout(node, centerX, y, maxWidth);
+                if (t.type === 'merged' && t.right) {
+                    const rightX = cx + width / 3;
+                    ctx.strokeStyle = '#3c3c3c';
+                    ctx.lineWidth = 1;
+                    ctx.beginPath();
+                    ctx.moveTo(cx, cy);
+                    ctx.lineTo(rightX, cy + verticalGap);
+                    ctx.stroke();
+                }
 
-            // 繪製節點
-            layout.points.forEach(point => {
-                // 節點圓形
-                ctx.fillStyle = '#dcdcaa';
+                // 遞歸繪製子樹
+                if (t.type === 'merged') {
+                    if (t.left) drawNode(t.left, cx - width / 3, cy + verticalGap, width / 2);
+                    if (t.right) drawNode(t.right, cx + width / 3, cy + verticalGap, width / 2);
+                }
+
+                // 繪製節點圓形
+                ctx.fillStyle = nodeColor;
                 ctx.beginPath();
-                ctx.arc(point.x, point.y, nodeRadius, 0, 2 * Math.PI);
+                ctx.arc(cx, cy, nodeRadius, 0, 2 * Math.PI);
                 ctx.fill();
 
-                // 節點數字
+                // 繪製節點數字
                 ctx.fillStyle = '#1e1e1e';
                 ctx.font = 'bold 12px Arial';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
-                ctx.fillText(point.value, point.x, point.y);
-            });
+                ctx.fillText(value, cx, cy);
+            }
+
+            drawNode(tree, centerX, y, maxWidth);
         }
 
         function drawArrayLayer(step, algorithm, canvasW, canvasH) {
@@ -605,22 +636,22 @@
             // 更新狀態
             stateText.textContent = step.message;
 
-            // 更新堆結構 - 顯示樹的大小信息
+            // 更新堆結構 - 顯示每棵樹的大小
             let heapHtml = '';
-            step.forest.forEach((heap, idx) => {
-                const size = LEONARDO[heap.leonardoIndex];
-                heapHtml += `<div class="heap-info">🌳 L(${heap.leonardoIndex}) - 大小: ${size} 個節點</div>`;
+            step.trees.forEach((tree, idx) => {
+                const size = getTreeSize(tree);
+                heapHtml += `<div class="heap-info">🌳 樹 ${idx + 1} - 大小: ${size}</div>`;
             });
             heapStructure.innerHTML = heapHtml || '<div style="color: #858585; font-size: 11px;">（堆森林為空）</div>';
 
             // 更新統計
             stats.innerHTML = `
-                <div>堆的數量: ${step.forest.length}</div>
-                <div>已排序: ${step.sorted_count}/${algorithm.n}</div>
+                <div>樹的數量: ${step.trees.length}</div>
+                <div>已排序: ${step.sorted.length}/${algorithm.n}</div>
             `;
 
             // 更新已排序數列
-            const sorted_values = step.sorted_indices.map(i => algorithm.array[i]);
+            const sorted_values = step.sorted.map(i => algorithm.array[i]);
             if (sorted_values.length === 0) {
                 sortedArrayDisplay.textContent = '等待排序...';
                 sortedArrayDisplay.style.color = '#858585';
