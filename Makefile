@@ -1,7 +1,34 @@
-# Makefile for Smooth Sort Project
+# 1. 偵測作業系統 (OS 是 Windows 內建環境變數)
+ifeq ($(OS),Windows_NT)
+    # --- Windows 設定 ---
+    TARGET = main.exe
+    MKDIR = if not exist "$1" mkdir "$1"
+    RM = del /q
+    RMDIR = rmdir /s /q
+    CP = copy /y
+    MV = move /y
+    # 使用反斜線修復路徑執行問題
+    EXEC = .\$(BIN_DIR)\$(TARGET)
+    CLEAN_CMD = if exist $(BIN_DIR)\*.o del /q $(BIN_DIR)\*.o && if exist $(BIN_DIR)\$(TARGET) del /q $(BIN_DIR)\$(TARGET)
+    CLEAN_ALL_CMD = if exist $(DATA_DIR)\*.csv del /q $(DATA_DIR)\*.csv && if exist $(PLOTS_DIR)\*.png del /q $(PLOTS_DIR)\*.png
+    PYTHON = python
+else
+    # --- Mac / Linux 設定 ---
+    TARGET = main
+    MKDIR = mkdir -p "$1"
+    RM = rm -f
+    RMDIR = rm -rf
+    CP = cp
+    MV = mv
+    EXEC = ./$(BIN_DIR)/$(TARGET)
+    CLEAN_CMD = rm -f $(BIN_DIR)/*.o $(BIN_DIR)/$(TARGET)
+    CLEAN_ALL_CMD = rm -f $(DATA_DIR)/*.csv $(PLOTS_DIR)/*.png
+    PYTHON = python3
+endif
+
+# --- 共用變數 ---
 CXX = g++
 CXXFLAGS = -std=c++11 -O2 -Wall -Wextra
-TARGET = main
 SRC_DIR = src
 BENCHMARK_DIR = benchmark
 BIN_DIR = bin
@@ -9,127 +36,76 @@ DATA_DIR = data
 PLOTS_DIR = plots
 SCRIPTS_DIR = scripts
 
-# Source files
+# 原始碼與物件檔
 MAIN_SRC = $(SRC_DIR)/main.cpp
 BASELINE_SRC = $(BENCHMARK_DIR)/baseline.cpp
 SMOOTH_SORT_SRC = $(SRC_DIR)/smooth_sort.cpp
-
-# Header files
 HEADERS = $(SRC_DIR)/smooth_sort.h $(BENCHMARK_DIR)/baseline.h $(BENCHMARK_DIR)/timer.h
 
-# Object files
 MAIN_OBJ = $(BIN_DIR)/main.o
 BASELINE_OBJ = $(BIN_DIR)/baseline.o
 SMOOTH_SORT_OBJ = $(BIN_DIR)/smooth_sort.o
 
-# Build main executable
+# --- 編譯規則 ---
+
+# 預設目標
+all: $(BIN_DIR)/$(TARGET)
+
 $(BIN_DIR)/$(TARGET): $(MAIN_OBJ) $(BASELINE_OBJ) | $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
-# Compile main.cpp
 $(MAIN_OBJ): $(MAIN_SRC) $(HEADERS) | $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Compile baseline.cpp
 $(BASELINE_OBJ): $(BASELINE_SRC) $(BENCHMARK_DIR)/baseline.h | $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Compile smooth_sort.cpp (if exists)
 $(SMOOTH_SORT_OBJ): $(SMOOTH_SORT_SRC) $(SRC_DIR)/smooth_sort.h | $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Create directories
+# --- 目錄建立 (使用 call 呼叫自定義變數) ---
 $(BIN_DIR):
-	mkdir -p $(BIN_DIR)
+	@$(call MKDIR,$(BIN_DIR))
 
 $(DATA_DIR):
-	mkdir -p $(DATA_DIR)
+	@$(call MKDIR,$(DATA_DIR))
 
 $(PLOTS_DIR):
-	mkdir -p $(PLOTS_DIR)
+	@$(call MKDIR,$(PLOTS_DIR))
 
-# Clean build files
+# --- 清理指令 ---
 clean:
 	@echo "Cleaning build files..."
-	@if [ -d "$(BIN_DIR)" ]; then \
-		if [ -f "$(BIN_DIR)/$(TARGET)" ]; then rm "$(BIN_DIR)/$(TARGET)"; fi; \
-		if [ -f "$(BIN_DIR)/*.o" ]; then rm $(BIN_DIR)/*.o 2>/dev/null || true; fi; \
-	fi
+	@$(CLEAN_CMD)
 
-# Rebuild everything
-rebuild: clean $(BIN_DIR)/$(TARGET)
-
-# Run the program
-run: $(BIN_DIR)/$(TARGET)
-	./$(BIN_DIR)/$(TARGET)
-
-# Quick compile and run (current method)
-quick:
-	cd $(SRC_DIR) && $(CXX) $(CXXFLAGS) main.cpp ../$(BASELINE_SRC) -o $(TARGET) && ./$(TARGET)
-
-# Test smooth sort only
-test:
-	cd . && $(CXX) $(CXXFLAGS) test_smooth.cpp -o test_smooth && ./test_smooth
-
-# Install Python dependencies for plotting
-install-deps:
-	@echo "Installing Python dependencies..."
-	pip3 install pandas matplotlib numpy scipy
-
-# Check if Python dependencies are installed
-check-deps:
-	@echo "Checking Python dependencies..."
-	@python3 -c "import pandas, matplotlib, numpy, scipy; print('All dependencies are installed!')" || (echo "Missing dependencies. Run 'make install-deps' first." && exit 1)
-
-# Run benchmark and generate data
-benchmark: $(BIN_DIR)/$(TARGET) | $(DATA_DIR)
-	./$(BIN_DIR)/$(TARGET)
-	@if [ -f "benchmark_data.csv" ]; then \
-		echo "Moving benchmark data to $(DATA_DIR)/"; \
-		mv benchmark_data.csv $(DATA_DIR)/; \
-	fi
-
-# Generate plots from benchmark data
-plot: $(DATA_DIR)/benchmark_data.csv check-deps | $(PLOTS_DIR)
-	cd $(SCRIPTS_DIR) && python3 draw.py
-
-# Run complete benchmark and visualization pipeline
-visualize: benchmark check-deps plot
-	@echo "Benchmark complete and plots generated!"
-	@echo "Check $(DATA_DIR)/benchmark_data.csv for raw data"
-	@echo "Check $(PLOTS_DIR)/ for visualizations"
-
-# Clean all generated files (including plots and data)
 clean-all: clean
-	@echo "Cleaning all generated files..."
-	@if [ -d "$(DATA_DIR)" ]; then rm $(DATA_DIR)/*.csv 2>/dev/null || true; fi
-	@if [ -d "$(PLOTS_DIR)" ]; then rm $(PLOTS_DIR)/*.png 2>/dev/null || true; fi
+	@echo "Cleaning data and plots..."
+	@$(CLEAN_ALL_CMD)
 
-# Help target
+# --- 執行與測試 ---
+rebuild: clean all
+
+run: $(BIN_DIR)/$(TARGET)
+	@$(EXEC)
+
+benchmark: $(BIN_DIR)/$(TARGET) | $(DATA_DIR)
+	@$(EXEC)
+	@$(PYTHON) -c "import os; os.rename('benchmark_data.csv', os.path.join('$(DATA_DIR)', 'benchmark_data.csv')) if os.path.exists('benchmark_data.csv') else None"
+	@echo "Data moved to $(DATA_DIR)"
+
+plot: $(DATA_DIR)/benchmark_data.csv | $(PLOTS_DIR)
+	cd $(SCRIPTS_DIR) && $(PYTHON) draw.py
+
+visualize: benchmark plot
+	@echo "Benchmark complete and plots generated!"
+
 help:
+	@echo "Operating System Detected: $(if $(filter Windows_NT,$(OS)),Windows,Mac/Linux)"
 	@echo "Available targets:"
-	@echo "  $(BIN_DIR)/$(TARGET)  - Build the main executable (default)"
-	@echo "  clean      - Remove build files"
-	@echo "  clean-all  - Remove build files, data, and plots"
-	@echo "  clean-win  - Windows-compatible clean (use if clean fails)"
-	@echo "  rebuild    - Clean and build"
-	@echo "  run        - Build and run the program"
-	@echo "  quick      - Quick compile and run (no intermediate files)"
-	@echo "  test       - Compile and run test_smooth"
-	@echo "  install-deps - Install Python dependencies for plotting"
-	@echo "  check-deps - Check if Python dependencies are installed"
-	@echo "  benchmark  - Run benchmark and generate CSV data"
-	@echo "  plot       - Generate plots from existing benchmark data"
-	@echo "  visualize  - Run complete benchmark and visualization pipeline"
-	@echo "  help       - Show this help message"
+	@echo "  make           - Build the executable"
+	@echo "  make run       - Run the program"
+	@echo "  make benchmark - Run and move CSV"
+	@echo "  make visualize - Run + Plot"
+	@echo "  make clean     - Remove object files"
 
-# Windows-compatible clean target
-clean-win:
-	@echo "Windows-compatible cleaning..."
-	@if exist "$(BIN_DIR)\\$(TARGET).exe" del "$(BIN_DIR)\\$(TARGET).exe"
-	@if exist "$(BIN_DIR)\\*.o" del "$(BIN_DIR)\\*.o"
-	@if exist "$(DATA_DIR)\\*.csv" del "$(DATA_DIR)\\*.csv"
-	@if exist "$(PLOTS_DIR)\\*.png" del "$(PLOTS_DIR)\\*.png"
-
-.PHONY: clean clean-all clean-win rebuild run quick test install-deps check-deps benchmark plot visualize help
-.DEFAULT_GOAL := $(BIN_DIR)/$(TARGET)
+.PHONY: all clean clean-all rebuild run benchmark plot visualize help
