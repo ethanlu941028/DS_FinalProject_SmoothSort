@@ -2,61 +2,76 @@
 #include <vector>
 #include <iomanip>
 #include <random>
-#include "smooth_sort.h" // 確保此檔案在同目錄
-#include "../benchmark/baseline.h" // 包含其他排序演算法
-#include "../benchmark/timer.h" // 包含計時工具
+#include <fstream>
+#include <algorithm> // 必須包含，為了執行 std::sort 製造 Best Case
+#include "smooth_sort.h" 
+#include "../benchmark/baseline.h" 
+#include "../benchmark/timer.h" 
 
 using namespace std;
 
 int main() {
-    // 考慮到 Insertion Sort O(n^2) 的特性，
-    // 若覺得跑太久，可以先將 n 調小 (例如 20000) 觀察差異
-    int n = 100000; 
-    
+    vector<int> sizes = {1000, 5000, 10000, 20000, 40000, 60000, 80000, 100000};
+    int num_trials = 3;
+
+    ofstream csv_file("benchmark_data.csv");
+    // 標頭新增 SmoothSortBest
+    csv_file << "n,SmoothSort,SmoothSortBest,HeapSort,QuickSort,InsertionSort,STLSort" << endl;
+
+    cout << "Starting benchmark (including Smoothsort Best Case)..." << endl;
+
     random_device rd;
     mt19937 gen(rd());
-    uniform_int_distribution<> dis(1, 100000);
-    
-    vector<int> original(n);
-    for(int& x : original) x = dis(gen);
 
-    cout << "--- Performance Test (Manual Implementation, n = " << n << ") ---" << endl;
-    cout << "Note: Insertion Sort may take a while for large n..." << endl;
+    for (int n : sizes) {
+        double t_smooth_sum = 0, t_smooth_best_sum = 0, t_heap_sum = 0, t_quick_sum = 0, t_insertion_sum = 0, t_stl_sum = 0;
 
-    // 1. Smooth Sort
-    vector<int> a_smooth = original;
-    long long t_smooth = measure_time([](vector<int>& v){ smoothsort::smooth_sort(v); }, a_smooth);
-    cout << "> Smooth Sort finished." << endl;
+        for (int trial = 0; trial < num_trials; ++trial) {
+            uniform_int_distribution<> dis(1, n);
+            vector<int> original(n);
+            for(int& x : original) x = dis(gen);
 
-    // 2. Manual Heap Sort
-    vector<int> a_heap = original;
-    long long t_heap = measure_time([](vector<int>& v){ manual_heap_sort(v); }, a_heap);
-    cout << "> Heap Sort finished." << endl;
+            // 1. Smooth Sort (一般隨機情況)
+            vector<int> a_smooth = original;
+            t_smooth_sum += measure_time([](vector<int>& v){ smoothsort::smooth_sort(v); }, a_smooth);
 
-    // 3. Manual Quick Sort
-    vector<int> a_quick = original;
-    long long t_quick = measure_time([](vector<int>& v){ manual_quick_sort(v); }, a_quick);
-    cout << "> Quick Sort finished." << endl;
+            // --- 新增：Smooth Sort (最優情況：已排序資料) ---
+            vector<int> a_smooth_best = original;
+            std::sort(a_smooth_best.begin(), a_smooth_best.end()); // 先排好序
+            t_smooth_best_sum += measure_time([](vector<int>& v){ smoothsort::smooth_sort(v); }, a_smooth_best);
 
-    // 4. Manual Insertion Sort
-    vector<int> a_insertion = original;
-    long long t_insertion = measure_time([](vector<int>& v){ manual_insertion_sort(v); }, a_insertion);
-    cout << "> Insertion Sort finished." << endl;
+            // 2. Heap Sort
+            vector<int> a_heap = original;
+            t_heap_sum += measure_time([](vector<int>& v){ manual_heap_sort(v); }, a_heap);
 
-    // 5. STL Sort (for comparison)
-    vector<int> a_stl = original;
-    long long t_stl = measure_time([](vector<int>& v){ stl_sort(v); }, a_stl);
-    cout << "> STL Sort finished." << endl;
+            // 3. Quick Sort
+            vector<int> a_quick = original;
+            t_quick_sum += measure_time([](vector<int>& v){ manual_quick_sort(v); }, a_quick);
 
-    // 統計結果
-    cout << "\n" << left << setw(18) << "Algorithm" << setw(15) << "Time (ms)" << "Time (ns)" << endl;
-    cout << string(60, '-') << endl;
-    cout << left << setw(18) << "Smooth Sort" << setw(15) << t_smooth / 1000000.0 << t_smooth << endl;
-    cout << left << setw(18) << "Heap Sort" << setw(15) << t_heap / 1000000.0 << t_heap << endl;
-    cout << left << setw(18) << "Quick Sort" << setw(15) << t_quick / 1000000.0 << t_quick << endl;
-    cout << left << setw(18) << "Insertion Sort" << setw(15) << t_insertion / 1000000.0 << t_insertion << endl;
-    cout << left << setw(18) << "STL Sort" << setw(15) << t_stl / 1000000.0 << t_stl << endl;
-    cout << string(60, '-') << endl;
+            // 4. Insertion Sort (防止大數據跑太久)
+            if (n <= 50000) {
+                vector<int> a_insertion = original;
+                t_insertion_sum += measure_time([](vector<int>& v){ manual_insertion_sort(v); }, a_insertion);
+            } else { t_insertion_sum = 0; }
 
+            // 5. STL Sort
+            vector<int> a_stl = original;
+            t_stl_sum += measure_time([](vector<int>& v){ stl_sort(v); }, a_stl);
+        }
+
+        // 寫入 CSV，確保欄位順序與標頭一致
+        csv_file << n << "," 
+                 << (t_smooth_sum / num_trials) / 1000000.0 << ","
+                 << (t_smooth_best_sum / num_trials) / 1000000.0 << "," // 這是 Best Case
+                 << (t_heap_sum / num_trials) / 1000000.0 << ","
+                 << (t_quick_sum / num_trials) / 1000000.0 << ","
+                 << (t_insertion_sum / num_trials) / 1000000.0 << ","
+                 << (t_stl_sum / num_trials) / 1000000.0 << endl;
+        
+        cout << "Finished n = " << setw(7) << n << endl;
+    }
+
+    csv_file.close();
+    cout << "Benchmark complete! Data saved to benchmark_data.csv" << endl;
     return 0;
 }
