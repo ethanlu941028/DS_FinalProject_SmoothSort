@@ -84,8 +84,7 @@ benchmark: $(BIN_DIR)/$(TARGET) | $(DATA_DIR)
 
 # Generate plots from benchmark data
 plot: $(DATA_DIR)/benchmark_data.csv check-deps | $(PLOTS_DIR)
-	python3 $(SCRIPTS_DIR)/draw.py
-	@if [ -f *.png ]; then mv *.png $(PLOTS_DIR)/ 2>/dev/null || true; fi
+	cd $(SCRIPTS_DIR) && python3 draw.py
 
 # Run complete benchmark and visualization pipeline
 visualize: benchmark check-deps plot
