@@ -58,16 +58,50 @@ quick:
 test:
 	cd . && $(CXX) $(CXXFLAGS) test_smooth.cpp -o test_smooth && ./test_smooth
 
+# Install Python dependencies for plotting
+install-deps:
+	@echo "Installing Python dependencies..."
+	pip3 install pandas matplotlib numpy scipy
+
+# Check if Python dependencies are installed
+check-deps:
+	@echo "Checking Python dependencies..."
+	@python3 -c "import pandas, matplotlib, numpy, scipy; print('All dependencies are installed!')" || (echo "Missing dependencies. Run 'make install-deps' first." && exit 1)
+
+# Run benchmark and generate data
+benchmark: $(BIN_DIR)/$(TARGET)
+	./$(BIN_DIR)/$(TARGET)
+
+# Generate plots from benchmark data
+plot: benchmark_data.csv check-deps
+	python3 draw.py
+
+# Run complete benchmark and visualization pipeline
+visualize: benchmark check-deps plot
+	@echo "Benchmark complete and plots generated!"
+	@echo "Check benchmark_data.csv for raw data"
+	@echo "Check *.png files for visualizations"
+
+# Clean all generated files (including plots and data)
+clean-all: clean
+	rm -f benchmark_data.csv *.png
+
 # Help target
 help:
 	@echo "Available targets:"
 	@echo "  $(BIN_DIR)/$(TARGET)  - Build the main executable (default)"
 	@echo "  clean      - Remove build files"
+	@echo "  clean-all  - Remove build files, data, and plots"
 	@echo "  rebuild    - Clean and build"
 	@echo "  run        - Build and run the program"
 	@echo "  quick      - Quick compile and run (no intermediate files)"
 	@echo "  test       - Compile and run test_smooth"
+	@echo "  install-deps - Install Python dependencies for plotting"
+	@echo "  check-deps - Check if Python dependencies are installed"
+	@echo "  benchmark  - Run benchmark and generate CSV data"
+	@echo "  plot       - Generate plots from existing benchmark data"
+	@echo "  visualize  - Run complete benchmark and visualization pipeline"
 	@echo "  help       - Show this help message"
 
-.PHONY: clean rebuild run quick test help
+.PHONY: clean clean-all rebuild run quick test install-deps check-deps benchmark plot visualize help
 .DEFAULT_GOAL := $(BIN_DIR)/$(TARGET)
