@@ -14,7 +14,7 @@ int main() {
     vector<int> sizes = {1000, 5000, 10000, 20000, 40000, 60000, 80000, 100000};
     int num_trials = 3;
 
-    ofstream csv_file("benchmark_data.csv");
+    ofstream csv_file("data/benchmark_data.csv");
     // 標頭新增 SmoothSortBest
     csv_file << "n,SmoothSort,SmoothSortBest,HeapSort,QuickSort,InsertionSort,STLSort" << endl;
 
@@ -72,6 +72,6 @@ int main() {
     }
 
     csv_file.close();
-    cout << "Benchmark complete! Data saved to benchmark_data.csv" << endl;
+    cout << "Benchmark complete! Data saved to data/benchmark_data.csv" << endl;
     return 0;
 }

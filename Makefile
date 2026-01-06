@@ -5,6 +5,9 @@ TARGET = main
 SRC_DIR = src
 BENCHMARK_DIR = benchmark
 BIN_DIR = bin
+DATA_DIR = data
+PLOTS_DIR = plots
+SCRIPTS_DIR = scripts
 
 # Source files
 MAIN_SRC = $(SRC_DIR)/main.cpp
@@ -35,9 +38,15 @@ $(BASELINE_OBJ): $(BASELINE_SRC) $(BENCHMARK_DIR)/baseline.h | $(BIN_DIR)
 $(SMOOTH_SORT_OBJ): $(SMOOTH_SORT_SRC) $(SRC_DIR)/smooth_sort.h | $(BIN_DIR)
 	$(CXX) $(CXXFLAGS) -c $< -o $@
 
-# Create bin directory
+# Create directories
 $(BIN_DIR):
 	mkdir -p $(BIN_DIR)
+
+$(DATA_DIR):
+	mkdir -p $(DATA_DIR)
+
+$(PLOTS_DIR):
+	mkdir -p $(PLOTS_DIR)
 
 # Clean build files
 clean:
@@ -69,22 +78,24 @@ check-deps:
 	@python3 -c "import pandas, matplotlib, numpy, scipy; print('All dependencies are installed!')" || (echo "Missing dependencies. Run 'make install-deps' first." && exit 1)
 
 # Run benchmark and generate data
-benchmark: $(BIN_DIR)/$(TARGET)
+benchmark: $(BIN_DIR)/$(TARGET) | $(DATA_DIR)
 	./$(BIN_DIR)/$(TARGET)
+	@if [ -f benchmark_data.csv ]; then mv benchmark_data.csv $(DATA_DIR)/; fi
 
 # Generate plots from benchmark data
-plot: benchmark_data.csv check-deps
-	python3 draw.py
+plot: $(DATA_DIR)/benchmark_data.csv check-deps | $(PLOTS_DIR)
+	python3 $(SCRIPTS_DIR)/draw.py
+	@if [ -f *.png ]; then mv *.png $(PLOTS_DIR)/ 2>/dev/null || true; fi
 
 # Run complete benchmark and visualization pipeline
 visualize: benchmark check-deps plot
 	@echo "Benchmark complete and plots generated!"
-	@echo "Check benchmark_data.csv for raw data"
-	@echo "Check *.png files for visualizations"
+	@echo "Check $(DATA_DIR)/benchmark_data.csv for raw data"
+	@echo "Check $(PLOTS_DIR)/ for visualizations"
 
 # Clean all generated files (including plots and data)
 clean-all: clean
-	rm -f benchmark_data.csv *.png
+	rm -rf $(DATA_DIR)/*.csv $(PLOTS_DIR)/*.png
 
 # Help target
 help:
