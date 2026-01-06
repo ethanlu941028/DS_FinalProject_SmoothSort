@@ -50,7 +50,11 @@ $(PLOTS_DIR):
 
 # Clean build files
 clean:
-	rm -rf $(BIN_DIR)/*.o $(BIN_DIR)/$(TARGET)
+	@echo "Cleaning build files..."
+	@if [ -d "$(BIN_DIR)" ]; then \
+		if [ -f "$(BIN_DIR)/$(TARGET)" ]; then rm "$(BIN_DIR)/$(TARGET)"; fi; \
+		if [ -f "$(BIN_DIR)/*.o" ]; then rm $(BIN_DIR)/*.o 2>/dev/null || true; fi; \
+	fi
 
 # Rebuild everything
 rebuild: clean $(BIN_DIR)/$(TARGET)
@@ -80,7 +84,10 @@ check-deps:
 # Run benchmark and generate data
 benchmark: $(BIN_DIR)/$(TARGET) | $(DATA_DIR)
 	./$(BIN_DIR)/$(TARGET)
-	@if [ -f benchmark_data.csv ]; then mv benchmark_data.csv $(DATA_DIR)/; fi
+	@if [ -f "benchmark_data.csv" ]; then \
+		echo "Moving benchmark data to $(DATA_DIR)/"; \
+		mv benchmark_data.csv $(DATA_DIR)/; \
+	fi
 
 # Generate plots from benchmark data
 plot: $(DATA_DIR)/benchmark_data.csv check-deps | $(PLOTS_DIR)
@@ -94,7 +101,9 @@ visualize: benchmark check-deps plot
 
 # Clean all generated files (including plots and data)
 clean-all: clean
-	rm -rf $(DATA_DIR)/*.csv $(PLOTS_DIR)/*.png
+	@echo "Cleaning all generated files..."
+	@if [ -d "$(DATA_DIR)" ]; then rm $(DATA_DIR)/*.csv 2>/dev/null || true; fi
+	@if [ -d "$(PLOTS_DIR)" ]; then rm $(PLOTS_DIR)/*.png 2>/dev/null || true; fi
 
 # Help target
 help:
@@ -102,6 +111,7 @@ help:
 	@echo "  $(BIN_DIR)/$(TARGET)  - Build the main executable (default)"
 	@echo "  clean      - Remove build files"
 	@echo "  clean-all  - Remove build files, data, and plots"
+	@echo "  clean-win  - Windows-compatible clean (use if clean fails)"
 	@echo "  rebuild    - Clean and build"
 	@echo "  run        - Build and run the program"
 	@echo "  quick      - Quick compile and run (no intermediate files)"
@@ -113,5 +123,13 @@ help:
 	@echo "  visualize  - Run complete benchmark and visualization pipeline"
 	@echo "  help       - Show this help message"
 
-.PHONY: clean clean-all rebuild run quick test install-deps check-deps benchmark plot visualize help
+# Windows-compatible clean target
+clean-win:
+	@echo "Windows-compatible cleaning..."
+	@if exist "$(BIN_DIR)\\$(TARGET).exe" del "$(BIN_DIR)\\$(TARGET).exe"
+	@if exist "$(BIN_DIR)\\*.o" del "$(BIN_DIR)\\*.o"
+	@if exist "$(DATA_DIR)\\*.csv" del "$(DATA_DIR)\\*.csv"
+	@if exist "$(PLOTS_DIR)\\*.png" del "$(PLOTS_DIR)\\*.png"
+
+.PHONY: clean clean-all clean-win rebuild run quick test install-deps check-deps benchmark plot visualize help
 .DEFAULT_GOAL := $(BIN_DIR)/$(TARGET)
